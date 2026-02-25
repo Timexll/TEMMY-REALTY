@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const MASTER_ADMIN_EMAIL = 'Jordankatie767@gmail.com';
+const MASTER_ADMIN_EMAIL = 'jordankatie767@gmail.com';
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,8 +34,8 @@ export const Navbar = () => {
   
   const { data: adminData } = useDoc(adminRef);
 
-  // Determine if the user should see the admin dashboard
-  const isAuthorized = !!adminData || user?.email === MASTER_ADMIN_EMAIL;
+  // Determine if the user should see the admin dashboard (Case-Insensitive check)
+  const isAuthorized = !!adminData || user?.email?.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
 
   const handleLogout = () => {
     if (auth) signOut(auth);

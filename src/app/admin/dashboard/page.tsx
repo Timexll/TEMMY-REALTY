@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useRouter } from 'next/navigation';
 import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase, useCollection, deleteDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, collection } from 'firebase/firestore';
 
 const MASTER_ADMIN_EMAIL = 'jordankatie767@gmail.com';
 
