@@ -35,6 +35,8 @@ import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/fireb
 import { signOut } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
 
+const MASTER_ADMIN_EMAIL = 'Jordankatie767@gmail.com';
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const auth = useAuth();
@@ -49,6 +51,10 @@ export default function AdminDashboardPage() {
   
   const { data: adminData, isLoading: isAdminDataLoading } = useDoc(adminRef);
 
+  // Hardcoded bypass for the master admin email
+  const isMasterAdmin = user?.email === MASTER_ADMIN_EMAIL;
+  const isAuthorized = !!adminData || isMasterAdmin;
+
   const [properties, setProperties] = useState<Property[]>(INITIAL_PROPERTIES || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -62,19 +68,18 @@ export default function AdminDashboardPage() {
     }
   }, [user, isUserLoading, router]);
 
-  // Authorization check: Redirect if logged in but not an authorized admin
+  // Authorization check
   useEffect(() => {
-    if (!isUserLoading && !isAdminDataLoading && user && !adminData) {
+    if (!isUserLoading && !isAdminDataLoading && user && !isAuthorized) {
       toast({
         variant: "destructive",
         title: "Access Denied",
         description: "You are not authorized to access the admin dashboard.",
       });
-      // Optionally sign out unauthorized users
       if (auth) signOut(auth);
       router.push('/admin/login');
     }
-  }, [user, adminData, isUserLoading, isAdminDataLoading, router, auth]);
+  }, [user, isAuthorized, isUserLoading, isAdminDataLoading, router, auth]);
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -190,7 +195,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (!user || !adminData) {
+  if (!user || !isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center space-y-6 bg-white p-10 rounded-3xl shadow-2xl border">
@@ -215,7 +220,7 @@ export default function AdminDashboardPage() {
             <LayoutDashboard className="w-4 h-4" /> Secure Admin Dashboard
           </div>
           <h1 className="text-4xl font-headline font-bold text-primary">Manage Listings</h1>
-          <p className="text-sm text-muted-foreground">Welcome back, {adminData.fullName}</p>
+          <p className="text-sm text-muted-foreground">Welcome back, {adminData?.fullName || user.email}</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

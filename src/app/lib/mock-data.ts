@@ -3,7 +3,7 @@ import { Property } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getPlaceholder = (id: string) => {
-  // Ensure we always have an array to call find on
+  // Defensive check to ensure we always have an array
   const images = Array.isArray(PlaceHolderImages) ? PlaceHolderImages : [];
   const found = images.find(img => img.id === id);
   return found?.imageUrl || `https://picsum.photos/seed/${id}/1200/800`;

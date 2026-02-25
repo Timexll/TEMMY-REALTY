@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -17,6 +18,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+const MASTER_ADMIN_EMAIL = 'Jordankatie767@gmail.com';
+
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useUser();
@@ -30,6 +33,9 @@ export const Navbar = () => {
   }, [db, user]);
   
   const { data: adminData } = useDoc(adminRef);
+
+  // Determine if the user should see the admin dashboard
+  const isAuthorized = !!adminData || user?.email === MASTER_ADMIN_EMAIL;
 
   const handleLogout = () => {
     if (auth) signOut(auth);
@@ -89,7 +95,7 @@ export const Navbar = () => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {adminData && (
+                  {isAuthorized && (
                     <DropdownMenuItem asChild>
                       <Link href="/admin/dashboard" className="cursor-pointer">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
@@ -142,7 +148,7 @@ export const Navbar = () => {
             
             {user ? (
               <>
-                {adminData && (
+                {isAuthorized && (
                   <Link href="/admin/dashboard" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-base font-medium text-primary">
                     Admin Dashboard
                   </Link>
