@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert, Trash, Key, Tag } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert, Key, Tag, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Property, PropertyType } from '@/app/lib/types';
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from '@/hooks/use-toast';
 import { generatePropertyDescription } from '@/ai/flows/ai-property-description-generation';
 import { Textarea } from '@/components/ui/textarea';
@@ -63,6 +64,7 @@ export default function AdminDashboardPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Partial<Property> | null>(null);
+  const [activeTab, setActiveTab] = useState<PropertyType | 'all'>('Buy');
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -102,20 +104,22 @@ export default function AdminDashboardPage() {
 
   const filteredProperties = useMemo(() => {
     const list = Array.isArray(firestoreProperties) ? firestoreProperties : [];
-    return list.filter(p => 
-      (p.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (p.location || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [firestoreProperties, searchQuery]);
+    return list.filter(p => {
+      const matchesSearch = (p.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (p.location || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesTab = activeTab === 'all' || p.type === activeTab;
+      return matchesSearch && matchesTab;
+    });
+  }, [firestoreProperties, searchQuery, activeTab]);
 
   const handleDelete = (id: string) => {
     if (!db) return;
-    if (confirm('Are you sure you want to delete this listing?')) {
+    if (confirm('Are you sure you want to delete this listing permanently?')) {
       const docRef = doc(db, 'property_listings', id);
       deleteDocumentNonBlocking(docRef);
       toast({
         title: "Listing Deleted",
-        description: "The property has been successfully removed.",
+        description: "The property has been successfully removed from the inventory.",
       });
     }
   };
@@ -224,6 +228,9 @@ export default function AdminDashboardPage() {
     );
   }
 
+  const salesCount = firestoreProperties?.filter(p => p.type === 'Buy').length || 0;
+  const rentalsCount = firestoreProperties?.filter(p => p.type === 'Rent').length || 0;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
@@ -232,13 +239,13 @@ export default function AdminDashboardPage() {
             <LayoutDashboard className="w-4 h-4" /> Secure Property Management
           </div>
           <h1 className="text-4xl font-headline font-bold text-primary">Listing Inventory</h1>
-          <p className="text-sm text-muted-foreground">Admin: {adminData?.fullName || user.email}</p>
+          <p className="text-sm text-muted-foreground">Logged in as: {adminData?.fullName || user.email}</p>
         </div>
         
         <div className="flex gap-4">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => setEditingProperty({ type: 'Buy', amenities: [], bedrooms: 1, bathrooms: 1 })} className="h-12 px-6 font-bold gap-2 shadow-xl shadow-primary/10">
+              <Button onClick={() => setEditingProperty({ type: activeTab === 'all' ? 'Buy' : activeTab, amenities: [], bedrooms: 1, bathrooms: 1 })} className="h-12 px-6 font-bold gap-2 shadow-xl shadow-primary/10">
                 <Plus className="w-5 h-5" /> Create New Listing
               </Button>
             </DialogTrigger>
@@ -383,116 +390,114 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-xl overflow-hidden border">
-        <div className="p-6 border-b flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/20">
+      <Tabs defaultValue="Buy" value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-8">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <TabsList className="bg-white p-1 rounded-2xl shadow-sm border h-14 w-full md:w-auto">
+            <TabsTrigger value="Buy" className="rounded-xl px-8 h-12 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
+              <Tag className="w-4 h-4 mr-2" /> For Sale ({salesCount})
+            </TabsTrigger>
+            <TabsTrigger value="Rent" className="rounded-xl px-8 h-12 font-bold data-[state=active]:bg-secondary data-[state=active]:text-primary">
+              <Key className="w-4 h-4 mr-2" /> For Rent ({rentalsCount})
+            </TabsTrigger>
+            <TabsTrigger value="all" className="rounded-xl px-8 h-12 font-bold data-[state=active]:bg-muted data-[state=active]:text-primary">
+              <ClipboardList className="w-4 h-4 mr-2" /> All Inventory
+            </TabsTrigger>
+          </TabsList>
+
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
-              placeholder="Search by title or location..." 
-              className="pl-10 h-10 border-none bg-white shadow-sm"
+              placeholder="Search listings..." 
+              className="pl-10 h-14 rounded-2xl border-none bg-white shadow-sm"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex gap-6">
-            <div className="text-right">
-              <div className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1">
-                <Tag className="w-3 h-3" /> For Sale
-              </div>
-              <div className="text-2xl font-bold text-primary">
-                {firestoreProperties?.filter(p => p.type === 'Buy').length || 0}
-              </div>
-            </div>
-            <Separator orientation="vertical" className="h-10" />
-            <div className="text-right">
-              <div className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1">
-                <Key className="w-3 h-3" /> For Rent
-              </div>
-              <div className="text-2xl font-bold text-secondary">
-                {firestoreProperties?.filter(p => p.type === 'Rent').length || 0}
-              </div>
-            </div>
-          </div>
         </div>
-        
-        <Table>
-          <TableHeader className="bg-muted/30">
-            <TableRow>
-              <TableHead className="font-bold w-[40%]">Property Details</TableHead>
-              <TableHead className="font-bold">Listing Type</TableHead>
-              <TableHead className="font-bold">Price/Rent</TableHead>
-              <TableHead className="font-bold text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredProperties.length > 0 ? filteredProperties.map((property) => (
-              <TableRow key={property.id} className="hover:bg-muted/10 transition-colors">
-                <TableCell>
-                  <div className="flex items-center gap-4">
-                    <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border shadow-sm">
-                      <Image 
-                        src={property.imageUrl || `https://picsum.photos/seed/${property.id}/200/200`} 
-                        alt={property.title} 
-                        fill 
-                        className="object-cover" 
-                      />
-                    </div>
-                    <div>
-                      <div className="font-bold text-base text-primary">{property.title}</div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3" /> {property.location}
+
+        <TabsContent value={activeTab} className="bg-white rounded-3xl shadow-xl overflow-hidden border mt-0 ring-0 focus-visible:ring-0">
+          <Table>
+            <TableHeader className="bg-muted/30">
+              <TableRow>
+                <TableHead className="font-bold w-[40%]">Property Details</TableHead>
+                <TableHead className="font-bold">Listing Type</TableHead>
+                <TableHead className="font-bold">Price/Rent</TableHead>
+                <TableHead className="font-bold text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProperties.length > 0 ? filteredProperties.map((property) => (
+                <TableRow key={property.id} className="hover:bg-muted/10 transition-colors">
+                  <TableCell>
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border shadow-sm">
+                        <Image 
+                          src={property.imageUrl || `https://picsum.photos/seed/${property.id}/200/200`} 
+                          alt={property.title} 
+                          fill 
+                          className="object-cover" 
+                        />
+                      </div>
+                      <div>
+                        <div className="font-bold text-base text-primary">{property.title}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" /> {property.location}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {property.type === 'Buy' ? (
-                    <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 flex items-center gap-1 w-fit">
-                      <Tag className="w-3 h-3" /> FOR SALE
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-secondary/20 text-primary border-secondary/20 hover:bg-secondary/30 flex items-center gap-1 w-fit">
-                      <Key className="w-3 h-3" /> FOR RENT
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="font-bold text-sm text-primary">
-                  {property.price}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5"
-                      onClick={() => {
-                        setEditingProperty(property);
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/5"
-                      onClick={() => handleDelete(property.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )) : (
-              <TableRow>
-                <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
-                  {isPropertiesLoading ? 'Loading listings...' : 'No properties found.'}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                  </TableCell>
+                  <TableCell>
+                    {property.type === 'Buy' ? (
+                      <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 flex items-center gap-1 w-fit">
+                        <Tag className="w-3 h-3" /> FOR SALE
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-secondary/20 text-primary border-secondary/20 hover:bg-secondary/30 flex items-center gap-1 w-fit">
+                        <Key className="w-3 h-3" /> FOR RENT
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-bold text-sm text-primary">
+                    {property.price}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5"
+                        onClick={() => {
+                          setEditingProperty(property);
+                          setIsDialogOpen(true);
+                        }}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+                        onClick={() => handleDelete(property.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-48 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center gap-2">
+                      <ClipboardList className="w-10 h-10 opacity-20" />
+                      <p className="font-medium">No {activeTab === 'all' ? '' : activeTab.toLowerCase()} listings found.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TabsContent>
+      </Tabs>
 
       <div className="mt-12 flex justify-center">
         <Button 
