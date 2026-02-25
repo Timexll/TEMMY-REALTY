@@ -1,3 +1,4 @@
+
 import { Mail, Phone, MessageCircle, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
@@ -31,7 +32,7 @@ export const Footer = () => {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/buy" className="hover:text-primary">Buy a Home</Link></li>
               <li><Link href="/rent" className="hover:text-primary">Rent Property</Link></li>
-              <li><Link href="/#about" className="hover:text-primary">About Us</Link></li>
+              <li><Link href="/support" className="hover:text-primary">Support & FAQ</Link></li>
               <li><Link href="/admin/login" className="hover:text-primary">Admin Access</Link></li>
             </ul>
           </div>

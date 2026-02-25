@@ -77,29 +77,31 @@ export default function Home() {
               </div>
             </div>
 
-            <Link href="/#contact" className="inline-block">
+            <Link href="/support" className="inline-block">
               <Button variant="link" className="text-primary font-bold p-0 gap-2 text-lg hover:no-underline">
-                Connect With Us <ArrowRight className="w-5 h-5" />
+                Get Support <ArrowRight className="w-5 h-5" />
               </Button>
             </Link>
           </div>
 
           <div className="flex flex-col gap-6">
             {[
-              { title: 'Trusted Listings', icon: Shield, desc: 'Verified and safe properties' },
-              { title: 'Professional Service', icon: Award, desc: 'American standard expertise' },
-              { title: 'Customer Support', icon: Users, desc: '24/7 assistance for renters' },
-              { title: 'Easy Search', icon: Search, desc: 'Modern property discovery' },
+              { title: 'Trusted Listings', icon: Shield, desc: 'Verified and safe properties', href: '/buy' },
+              { title: 'Professional Service', icon: Award, desc: 'American standard expertise', href: '/#about' },
+              { title: 'Customer Support', icon: Users, desc: '24/7 assistance for renters', href: '/support' },
+              { title: 'Easy Search', icon: Search, desc: 'Modern property discovery', href: '/rent' },
             ].map((item, idx) => (
-              <div key={idx} className="flex gap-6 items-center p-8 rounded-3xl bg-white shadow-lg shadow-primary/5 border border-transparent hover:border-primary/10 transition-all duration-300">
-                <div className="bg-primary/5 p-4 rounded-2xl flex items-center justify-center">
-                  <item.icon className="w-8 h-8 text-primary" />
+              <Link href={item.href} key={idx}>
+                <div className="flex gap-6 items-center p-8 rounded-3xl bg-white shadow-lg shadow-primary/5 border border-transparent hover:border-primary/10 transition-all duration-300">
+                  <div className="bg-primary/5 p-4 rounded-2xl flex items-center justify-center">
+                    <item.icon className="w-8 h-8 text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-headline font-bold text-xl text-primary">{item.title}</h4>
+                    <p className="text-sm text-muted-foreground font-medium">{item.desc}</p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <h4 className="font-headline font-bold text-xl text-primary">{item.title}</h4>
-                  <p className="text-sm text-muted-foreground font-medium">{item.desc}</p>
-                </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
