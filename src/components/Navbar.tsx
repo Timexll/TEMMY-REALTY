@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Home, LogIn, Menu, X, LayoutDashboard, User as UserIcon, LogOut, HelpCircle } from 'lucide-react';
+import { Home, LogIn, Menu, X, LayoutDashboard, User as UserIcon, LogOut, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -43,9 +43,9 @@ export const Navbar = () => {
 
   const navLinks = [
     { name: 'Home', href: '/' },
+    { name: 'Search', href: '/search' },
     { name: 'Buy', href: '/buy' },
     { name: 'Rent', href: '/rent' },
-    { name: 'About Us', href: '/#about' },
     { name: 'Support', href: '/support' },
   ];
 

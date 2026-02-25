@@ -52,12 +52,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* About & Services Overview */}
+      {/* Services Overview */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" id="about">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
           <div className="space-y-8 sticky top-24">
             <div className="space-y-4">
-              <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary leading-tight">About Temmy American Realty</h2>
+              <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary leading-tight">Your Journey Home</h2>
               <p className="text-lg text-muted-foreground leading-relaxed">
                 We specialize in helping clients navigate the American real estate market. Our goal is to provide transparency, professionalism, and excellent customer service to everyone looking for a place to call home.
               </p>
@@ -76,20 +76,12 @@ export default function Home() {
                 <div className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Years Experience</div>
               </div>
             </div>
-
-            <Link href="/support" className="inline-block">
-              <Button variant="link" className="text-primary font-bold p-0 gap-2 text-lg hover:no-underline">
-                Get Support <ArrowRight className="w-5 h-5" />
-              </Button>
-            </Link>
           </div>
 
           <div className="flex flex-col gap-6">
             {[
-              { title: 'Trusted Listings', icon: Shield, desc: 'Verified and safe properties', href: '/buy' },
-              { title: 'Professional Service', icon: Award, desc: 'American standard expertise', href: '/#about' },
-              { title: 'Customer Support', icon: Users, desc: '24/7 assistance for renters', href: '/support' },
-              { title: 'Easy Search', icon: Search, desc: 'Modern property discovery', href: '/rent' },
+              { title: 'Customer Support', icon: Users, desc: '24/7 dedicated assistance for all your real estate needs.', href: '/support' },
+              { title: 'Easy Search', icon: Search, desc: 'Unified property search engine for all American listings.', href: '/search' },
             ].map((item, idx) => (
               <Link href={item.href} key={idx}>
                 <div className="flex gap-6 items-center p-8 rounded-3xl bg-white shadow-lg shadow-primary/5 border border-transparent hover:border-primary/10 transition-all duration-300">
@@ -100,6 +92,7 @@ export default function Home() {
                     <h4 className="font-headline font-bold text-xl text-primary">{item.title}</h4>
                     <p className="text-sm text-muted-foreground font-medium">{item.desc}</p>
                   </div>
+                  <ArrowRight className="w-5 h-5 text-primary/30 ml-auto group-hover:text-primary transition-colors" />
                 </div>
               </Link>
             ))}

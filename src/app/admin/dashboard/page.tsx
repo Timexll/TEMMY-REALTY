@@ -396,13 +396,13 @@ export default function AdminDashboardPage() {
           <div className="flex gap-4">
             <div className="text-right">
               <div className="text-xs font-bold uppercase text-muted-foreground">Total Listings</div>
-              <div className="text-2xl font-bold text-primary">{firestoreProperties?.length || 0}</div>
+              <div className="text-2xl font-bold text-primary">{filteredProperties.length}</div>
             </div>
             <Separator orientation="vertical" className="h-10" />
             <div className="text-right">
               <div className="text-xs font-bold uppercase text-muted-foreground">Active Sales</div>
               <div className="text-2xl font-bold text-secondary">
-                {firestoreProperties?.filter(p => p.type === 'Buy').length || 0}
+                {filteredProperties.filter(p => p.type === 'Buy').length}
               </div>
             </div>
           </div>
