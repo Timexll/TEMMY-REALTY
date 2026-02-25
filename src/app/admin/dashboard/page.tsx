@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert, Key, Tag, ClipboardList } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert, Key, Tag, ClipboardList, Camera, User as UserIcon, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Property, PropertyType } from '@/app/lib/types';
@@ -31,9 +31,10 @@ import { generatePropertyDescription } from '@/ai/flows/ai-property-description-
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase, useCollection, deleteDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { signOut } from 'firebase/auth';
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase, useCollection, deleteDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { signOut, updateProfile } from 'firebase/auth';
 import { doc, collection } from 'firebase/firestore';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const MASTER_ADMIN_EMAIL = 'jordankatie767@gmail.com';
 
@@ -65,6 +66,19 @@ export default function AdminDashboardPage() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Partial<Property> | null>(null);
   const [activeTab, setActiveTab] = useState<PropertyType | 'all'>('Buy');
+
+  // Profile Edit State
+  const [isProfileEditing, setIsProfileEditing] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileImage, setProfileImage] = useState('');
+
+  useEffect(() => {
+    if (adminData) {
+      setProfileName(adminData.fullName || '');
+    } else if (user) {
+      setProfileName(user.displayName || '');
+    }
+  }, [adminData, user]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -98,6 +112,37 @@ export default function AdminDashboardPage() {
         variant: "destructive",
         title: "Logout Failed",
         description: "An error occurred while signing out.",
+      });
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!auth?.currentUser || !db) return;
+    
+    try {
+      // Update Firebase Auth Profile
+      await updateProfile(auth.currentUser, {
+        displayName: profileName,
+        photoURL: profileImage || auth.currentUser.photoURL
+      });
+
+      // Update Firestore Admin Record
+      const docRef = doc(db, 'admin_users', auth.currentUser.uid);
+      updateDocumentNonBlocking(docRef, {
+        fullName: profileName,
+        lastUpdatedDate: new Date().toISOString()
+      });
+
+      setIsProfileEditing(false);
+      toast({
+        title: "Profile Updated",
+        description: "Your administrative profile has been saved successfully.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Could not update profile information.",
       });
     }
   };
@@ -139,10 +184,10 @@ export default function AdminDashboardPage() {
       const result = await generatePropertyDescription({
         propertyType: editingProperty.category || 'Residential',
         location: editingProperty.location,
-        bedrooms: editingProperty.bedrooms || 0,
-        bathrooms: editingProperty.bathrooms || 0,
-        price: editingProperty.price || 'Contact for price',
-        amenities: editingProperty.amenities || ['Modern features'],
+        bedrooms: Number(editingProperty.bedrooms) || 0,
+        bathrooms: Number(editingProperty.bathrooms) || 0,
+        price: String(editingProperty.price) || 'Contact for price',
+        amenities: editingProperty.amenities?.length ? editingProperty.amenities : ['Modern features'],
         descriptionHighlights: editingProperty.title
       });
 
@@ -152,6 +197,7 @@ export default function AdminDashboardPage() {
         description: "AI Listing Assistant has updated the description.",
       });
     } catch (error) {
+      console.error("AI Generation Error:", error);
       toast({
         variant: "destructive",
         title: "AI Generation Failed",
@@ -233,7 +279,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+      <div className="flex flex-col lg:flex-row justify-between items-start gap-8 mb-12">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-primary font-bold tracking-widest uppercase text-xs">
             <LayoutDashboard className="w-4 h-4" /> Secure Property Management
@@ -242,152 +288,186 @@ export default function AdminDashboardPage() {
           <p className="text-sm text-muted-foreground">Logged in as: {adminData?.fullName || user.email}</p>
         </div>
         
-        <div className="flex gap-4">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setEditingProperty({ type: activeTab === 'all' ? 'Buy' : activeTab, amenities: [], bedrooms: 1, bathrooms: 1 })} className="h-12 px-6 font-bold gap-2 shadow-xl shadow-primary/10">
-                <Plus className="w-5 h-5" /> Create New Listing
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-headline font-bold">
-                  {editingProperty?.id ? 'Modify Property' : 'Publish New Listing'}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6">
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <Tag className="w-3 h-3" /> Transaction Type
-                    </label>
-                    <Select 
-                      value={editingProperty?.type} 
-                      onValueChange={(val: PropertyType) => setEditingProperty(prev => ({ ...prev, type: val }))}
-                    >
-                      <SelectTrigger className="h-12 border-primary/20 bg-primary/5">
-                        <SelectValue placeholder="Select Listing Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Buy">For Sale (Direct Purchase)</SelectItem>
-                        <SelectItem value="Rent">For Rent (Monthly Lease)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <Building2 className="w-3 h-3" /> Property Title
-                    </label>
-                    <Input 
-                      value={editingProperty?.title || ''} 
-                      onChange={e => setEditingProperty(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="e.g. Modern Villa with Pool" 
-                      className="h-12 border-muted"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Style/Category</label>
-                      <Input 
-                        value={editingProperty?.category || ''} 
-                        onChange={e => setEditingProperty(prev => ({ ...prev, category: e.target.value }))}
-                        placeholder="e.g. Mansion" 
-                        className="h-12"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <MapPin className="w-3 h-3" /> Location
-                      </label>
-                      <Input 
-                        value={editingProperty?.location || ''} 
-                        onChange={e => setEditingProperty(prev => ({ ...prev, location: e.target.value }))}
-                        placeholder="City, State" 
-                        className="h-12"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <DollarSign className="w-3 h-3" /> {editingProperty?.type === 'Rent' ? 'Monthly Rent' : 'Selling Price'}
-                      </label>
-                      <Input 
-                        value={editingProperty?.price || ''} 
-                        onChange={e => setEditingProperty(prev => ({ ...prev, price: e.target.value }))}
-                        placeholder={editingProperty?.type === 'Rent' ? '$2,500/mo' : '$450,000'} 
-                        className="h-12"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Maximize className="w-3 h-3" /> Sq Ft
-                      </label>
-                      <Input 
-                        type="number"
-                        value={editingProperty?.sqft || ''} 
-                        onChange={e => setEditingProperty(prev => ({ ...prev, sqft: parseInt(e.target.value) || 0 }))}
-                        className="h-12"
-                      />
-                    </div>
+        <Card className="w-full lg:max-w-md shadow-lg rounded-2xl border-none bg-primary/5">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="relative h-12 w-12 rounded-full overflow-hidden bg-primary/10 border-2 border-primary/20">
+              {user?.photoURL ? (
+                <Image src={user.photoURL} alt="Profile" fill className="object-cover" />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center"><UserIcon className="w-6 h-6 text-primary" /></div>
+              )}
+            </div>
+            <div className="flex-grow">
+              {isProfileEditing ? (
+                <div className="flex gap-2">
+                  <Input 
+                    value={profileName} 
+                    onChange={e => setProfileName(e.target.value)} 
+                    placeholder="Full Name"
+                    className="h-8 text-sm"
+                  />
+                  <Button size="sm" onClick={handleUpdateProfile} className="h-8"><Save className="w-3 h-3" /></Button>
+                </div>
+              ) : (
+                <div className="font-bold text-primary flex items-center gap-2">
+                  {adminData?.fullName || user.displayName || 'Admin User'}
+                  <button onClick={() => setIsProfileEditing(true)} className="text-muted-foreground hover:text-primary"><Edit className="w-3 h-3" /></button>
+                </div>
+              )}
+              <div className="text-xs text-muted-foreground">{user.email}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex justify-end mb-8">
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setEditingProperty({ type: activeTab === 'all' ? 'Buy' : activeTab, amenities: [], bedrooms: 1, bathrooms: 1 })} className="h-12 px-6 font-bold gap-2 shadow-xl shadow-primary/10">
+              <Plus className="w-5 h-5" /> Create New Listing
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-headline font-bold">
+                {editingProperty?.id ? 'Modify Property' : 'Publish New Listing'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 py-6">
+              {/* Image and Basic Info */}
+              <div className="lg:col-span-1 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    <Camera className="w-3 h-3" /> Property Image URL
+                  </label>
+                  <Input 
+                    value={editingProperty?.imageUrl || ''} 
+                    onChange={e => setEditingProperty(prev => ({ ...prev, imageUrl: e.target.value }))}
+                    placeholder="https://images.unsplash.com/..." 
+                    className="h-11"
+                  />
+                  <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                    {editingProperty?.imageUrl ? (
+                      <Image src={editingProperty.imageUrl} alt="Preview" fill className="object-cover" />
+                    ) : (
+                      <div className="text-center p-4">
+                        <Camera className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                        <span className="text-xs text-muted-foreground">Image Preview</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description (AI Assisted)</label>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 text-[11px] font-bold gap-1 border-secondary text-primary hover:bg-secondary/10"
-                        onClick={handleAiGenerate}
-                        disabled={isAiLoading}
-                      >
-                        {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                        Auto-Write
-                      </Button>
-                    </div>
-                    <Textarea 
-                      value={editingProperty?.description || ''} 
-                      onChange={e => setEditingProperty(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Describe the property features..."
-                      className="h-[188px] resize-none border-muted"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Bed className="w-3 h-3" /> Bedrooms
-                      </label>
-                      <Input 
-                        type="number"
-                        value={editingProperty?.bedrooms || 0} 
-                        onChange={e => setEditingProperty(prev => ({ ...prev, bedrooms: parseInt(e.target.value) || 0 }))}
-                        className="h-12"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Bath className="w-3 h-3" /> Bathrooms
-                      </label>
-                      <Input 
-                        type="number"
-                        value={editingProperty?.bathrooms || 0} 
-                        onChange={e => setEditingProperty(prev => ({ ...prev, bathrooms: parseInt(e.target.value) || 0 }))}
-                        className="h-12"
-                      />
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    <Tag className="w-3 h-3" /> Transaction Type
+                  </label>
+                  <Select 
+                    value={editingProperty?.type} 
+                    onValueChange={(val: PropertyType) => setEditingProperty(prev => ({ ...prev, type: val }))}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Listing Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Buy">For Sale</SelectItem>
+                      <SelectItem value="Rent">For Rent</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <DialogFooter className="border-t pt-6">
-                <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="font-bold">Cancel</Button>
-                <Button onClick={handleSave} className="font-bold px-10">Confirm & Post</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+
+              {/* Main Property Details */}
+              <div className="lg:col-span-2 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Property Title</label>
+                    <Input 
+                      value={editingProperty?.title || ''} 
+                      onChange={e => setEditingProperty(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="e.g. Modern Villa" 
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Location</label>
+                    <Input 
+                      value={editingProperty?.location || ''} 
+                      onChange={e => setEditingProperty(prev => ({ ...prev, location: e.target.value }))}
+                      placeholder="City, State" 
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Price/Rent</label>
+                    <Input 
+                      value={editingProperty?.price || ''} 
+                      onChange={e => setEditingProperty(prev => ({ ...prev, price: e.target.value }))}
+                      placeholder="$500,000" 
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Sq Ft</label>
+                    <Input 
+                      type="number"
+                      value={editingProperty?.sqft || ''} 
+                      onChange={e => setEditingProperty(prev => ({ ...prev, sqft: parseInt(e.target.value) || 0 }))}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Beds</label>
+                    <Input 
+                      type="number"
+                      value={editingProperty?.bedrooms || 0} 
+                      onChange={e => setEditingProperty(prev => ({ ...prev, bedrooms: parseInt(e.target.value) || 0 }))}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Baths</label>
+                    <Input 
+                      type="number"
+                      value={editingProperty?.bathrooms || 0} 
+                      onChange={e => setEditingProperty(prev => ({ ...prev, bathrooms: parseInt(e.target.value) || 0 }))}
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description (AI Assisted)</label>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 text-[11px] font-bold gap-1"
+                      onClick={handleAiGenerate}
+                      disabled={isAiLoading}
+                    >
+                      {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      Auto-Write
+                    </Button>
+                  </div>
+                  <Textarea 
+                    value={editingProperty?.description || ''} 
+                    onChange={e => setEditingProperty(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Provide a detailed description..."
+                    className="min-h-[150px] resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="border-t pt-6">
+              <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="font-bold">Cancel</Button>
+              <Button onClick={handleSave} className="font-bold px-10">Confirm & Post</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Tabs defaultValue="Buy" value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-8">
