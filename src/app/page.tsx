@@ -1,7 +1,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, CheckCircle, Shield, Award, Users, Search } from 'lucide-react';
+import { ArrowRight, CheckCircle, Award, Users, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PROPERTIES } from '@/app/lib/mock-data';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -83,8 +83,8 @@ export default function Home() {
               { title: 'Customer Support', icon: Users, desc: '24/7 dedicated assistance for all your real estate needs.', href: '/support' },
               { title: 'Easy Search', icon: Search, desc: 'Unified property search engine for all American listings.', href: '/search' },
             ].map((item, idx) => (
-              <Link href={item.href} key={idx}>
-                <div className="flex gap-6 items-center p-8 rounded-3xl bg-white shadow-lg shadow-primary/5 border border-transparent hover:border-primary/10 transition-all duration-300">
+              <Link href={item.href} key={idx} className="group">
+                <div className="flex gap-6 items-center p-8 rounded-3xl bg-white shadow-xl shadow-primary/5 border border-transparent transition-all">
                   <div className="bg-primary/5 p-4 rounded-2xl flex items-center justify-center">
                     <item.icon className="w-8 h-8 text-primary" />
                   </div>
@@ -92,7 +92,7 @@ export default function Home() {
                     <h4 className="font-headline font-bold text-xl text-primary">{item.title}</h4>
                     <p className="text-sm text-muted-foreground font-medium">{item.desc}</p>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-primary/30 ml-auto group-hover:text-primary transition-colors" />
+                  <ArrowRight className="w-5 h-5 text-primary/20 ml-auto group-hover:text-primary transition-colors" />
                 </div>
               </Link>
             ))}
