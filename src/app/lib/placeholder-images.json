@@ -1,0 +1,52 @@
+{
+  "placeholderImages": [
+    {
+      "id": "luxury-villa",
+      "description": "Luxury Modern American Villa",
+      "imageUrl": "https://picsum.photos/seed/realty-1/1200/800",
+      "imageHint": "luxury villa"
+    },
+    {
+      "id": "suburban-home",
+      "description": "Charming Suburban Family House",
+      "imageUrl": "https://picsum.photos/seed/realty-2/1200/800",
+      "imageHint": "suburban house"
+    },
+    {
+      "id": "downtown-apartment",
+      "description": "Modern Downtown Apartment",
+      "imageUrl": "https://picsum.photos/seed/realty-3/1200/800",
+      "imageHint": "downtown apartment"
+    },
+    {
+      "id": "waterfront-property",
+      "description": "Stunning Waterfront Estate",
+      "imageUrl": "https://picsum.photos/seed/realty-4/1200/800",
+      "imageHint": "waterfront home"
+    },
+    {
+      "id": "luxury-condo",
+      "description": "High-rise Luxury Condo",
+      "imageUrl": "https://picsum.photos/seed/realty-5/1200/800",
+      "imageHint": "luxury condo"
+    },
+    {
+      "id": "studio-flat",
+      "description": "Cozy Modern Studio Flat",
+      "imageUrl": "https://picsum.photos/seed/realty-6/1200/800",
+      "imageHint": "studio flat"
+    },
+    {
+      "id": "smart-home",
+      "description": "Newly Built Smart Home",
+      "imageUrl": "https://picsum.photos/seed/realty-7/1200/800",
+      "imageHint": "modern home"
+    },
+    {
+      "id": "family-rental",
+      "description": "Spacious Family Rental Home",
+      "imageUrl": "https://picsum.photos/seed/realty-8/1200/800",
+      "imageHint": "family home"
+    }
+  ]
+}
