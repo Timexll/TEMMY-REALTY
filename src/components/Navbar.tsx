@@ -3,12 +3,13 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Home, Search, LogIn, Menu, X, Phone } from 'lucide-react';
+import { Home, LogIn, Menu, X, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { useUser } from '@/firebase';
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user } = useUser();
 
   const navLinks = [
     { name: 'Home', href: '/' },
@@ -42,10 +43,19 @@ export const Navbar = () => {
               </Link>
             ))}
             <div className="h-6 w-px bg-border" />
-            <Link href="/admin/login">
+            <Link href={user ? "/admin/dashboard" : "/admin/login"}>
               <Button variant="outline" size="sm" className="gap-2">
-                <LogIn className="w-4 h-4" />
-                Admin
+                {user ? (
+                  <>
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    Admin
+                  </>
+                )}
               </Button>
             </Link>
           </div>
@@ -76,10 +86,19 @@ export const Navbar = () => {
                 {link.name}
               </Link>
             ))}
-            <Link href="/admin/login" onClick={() => setIsOpen(false)}>
+            <Link href={user ? "/admin/dashboard" : "/admin/login"} onClick={() => setIsOpen(false)}>
               <div className="px-3 py-2 text-base font-medium text-primary flex items-center gap-2">
-                <LogIn className="w-4 h-4" />
-                Admin Login
+                {user ? (
+                  <>
+                    <LayoutDashboard className="w-4 h-4" />
+                    Go to Dashboard
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    Admin Login
+                  </>
+                )}
               </div>
             </Link>
           </div>

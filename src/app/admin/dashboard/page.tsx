@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,14 +31,43 @@ import { generatePropertyDescription } from '@/ai/flows/ai-property-description-
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
+import { useAuth, useUser } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
   const [properties, setProperties] = useState<Property[]>(INITIAL_PROPERTIES || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Partial<Property> | null>(null);
+
+  // Protection effect
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/admin/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  const handleLogout = async () => {
+    if (!auth) return;
+    try {
+      await signOut(auth);
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully signed out.",
+      });
+      router.push('/admin/login');
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Logout Failed",
+        description: "An error occurred while signing out.",
+      });
+    }
+  };
 
   const filteredProperties = useMemo(() => {
     const list = Array.isArray(properties) ? properties : [];
@@ -124,6 +153,16 @@ export default function AdminDashboardPage() {
       description: editingProperty?.id ? "The listing has been updated." : "New property added successfully.",
     });
   };
+
+  if (isUserLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) return null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -384,10 +423,7 @@ export default function AdminDashboardPage() {
         <Button 
           variant="outline" 
           className="text-muted-foreground gap-2 border-dashed border-2 px-8 h-12" 
-          onClick={() => {
-            toast({ title: "Logging out", description: "Returning to public portal..." });
-            router.push('/');
-          }}
+          onClick={handleLogout}
         >
           <LogOut className="w-4 h-4" /> Finalize Session & Log Out
         </Button>

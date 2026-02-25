@@ -1,34 +1,85 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, Loader2, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
+import { useAuth, useUser, useFirestore } from '@/firebase';
+import { initiateEmailSignIn, initiateEmailSignUp } from '@/firebase/non-blocking-login';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc } from 'firebase/firestore';
 
 export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  
   const router = useRouter();
+  const auth = useAuth();
+  const db = useFirestore();
+  const { user, isUserLoading } = useUser();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      router.push('/admin/dashboard');
+    }
+  }, [user, router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
+    
     setIsLoading(true);
 
-    // Simulate login
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Successfully logged in",
-        description: "Welcome to Temmy Realty Admin Dashboard",
-      });
-      router.push('/admin/dashboard');
-    }, 1500);
+    if (isRegistering) {
+      initiateEmailSignUp(auth, email, password);
+    } else {
+      initiateEmailSignIn(auth, email, password);
+    }
+    
+    // We don't await here. The useUser hook will update automatically.
+    // If registration is successful, the user profile creation is handled in the effect below.
+    // If there is an error, the global FirebaseErrorListener handles it.
+    
+    // Reset loading after a delay if no user is found yet (error cases)
+    setTimeout(() => setIsLoading(false), 3000);
   };
+
+  // Effect to create admin record after successful registration
+  useEffect(() => {
+    if (user && isRegistering && db) {
+      const adminRef = doc(db, 'admin_users', user.uid);
+      setDocumentNonBlocking(adminRef, {
+        id: user.uid,
+        fullName: fullName || 'New Administrator',
+        email: user.email,
+        role: 'Administrator',
+        registrationDate: new Date().toISOString(),
+        lastLoginDate: new Date().toISOString(),
+      }, { merge: true });
+      
+      toast({
+        title: "Registration Successful",
+        description: "Your administrator account has been created.",
+      });
+    }
+  }, [user, isRegistering, db, fullName]);
+
+  if (isUserLoading) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 bg-muted/20">
@@ -52,14 +103,30 @@ export default function AdminLoginPage() {
             {isRegistering && (
               <div className="space-y-2">
                 <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground px-1">Full Name</label>
-                <Input placeholder="Enter your full name" required className="h-12 bg-muted/30 border-none" />
+                <div className="relative">
+                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input 
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your full name" 
+                    required 
+                    className="h-12 pl-12 bg-muted/30 border-none" 
+                  />
+                </div>
               </div>
             )}
             <div className="space-y-2">
               <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground px-1">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input type="email" placeholder="admin@temmyrealty.com" required className="h-12 pl-12 bg-muted/30 border-none" />
+                <Input 
+                  type="email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@temmyrealty.com" 
+                  required 
+                  className="h-12 pl-12 bg-muted/30 border-none" 
+                />
               </div>
             </div>
             <div className="space-y-2">
@@ -68,6 +135,8 @@ export default function AdminLoginPage() {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input 
                   type={showPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••" 
                   required 
                   className="h-12 pl-12 pr-12 bg-muted/30 border-none" 
@@ -81,12 +150,6 @@ export default function AdminLoginPage() {
                 </button>
               </div>
             </div>
-            {isRegistering && (
-              <div className="space-y-2">
-                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground px-1">Confirm Password</label>
-                <Input type="password" placeholder="••••••••" required className="h-12 bg-muted/30 border-none" />
-              </div>
-            )}
             <Button className="w-full h-12 font-bold text-lg mt-4 shadow-lg shadow-primary/20" disabled={isLoading}>
               {isLoading ? (
                 <>
