@@ -1,5 +1,4 @@
-
-import { Mail, Phone, MessageCircle, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
+import { Mail, Phone, MessageCircle, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
 export const Footer = () => {
@@ -14,9 +13,15 @@ export const Footer = () => {
               Specializing in premium American real estate. Whether you're buying a dream villa or renting a luxury condo, we provide excellence every step of the way.
             </p>
             <div className="flex gap-4">
-              <Facebook className="w-5 h-5 text-muted-foreground cursor-pointer hover:text-primary transition-colors" />
-              <Instagram className="w-5 h-5 text-muted-foreground cursor-pointer hover:text-primary transition-colors" />
-              <Twitter className="w-5 h-5 text-muted-foreground cursor-pointer hover:text-primary transition-colors" />
+              <a 
+                href="https://wa.me/12532999533" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="flex items-center gap-2 bg-green-500/10 text-green-600 px-4 py-2 rounded-full hover:bg-green-500/20 transition-all font-bold text-xs"
+              >
+                <MessageCircle className="w-4 h-4" />
+                WhatsApp Us
+              </a>
             </div>
           </div>
 
