@@ -34,6 +34,7 @@ import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase, useCollection,
 import { signOut, updateProfile } from 'firebase/auth';
 import { doc, collection } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 const MASTER_ADMIN_EMAIL = 'jordankatie767@gmail.com';
 
@@ -186,11 +187,14 @@ export default function AdminDashboardPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
-        setEditingProperty(prev => ({
-          ...prev,
-          imageUrls: [...(prev?.imageUrls || []), base64String],
-          imageUrl: prev?.imageUrl || base64String // Set as primary if first
-        }));
+        setEditingProperty(prev => {
+          const newUrls = [...(prev?.imageUrls || []), base64String];
+          return {
+            ...prev,
+            imageUrls: newUrls,
+            imageUrl: newUrls[0] // Primary is first image
+          };
+        });
       };
       reader.readAsDataURL(file);
     });
@@ -423,6 +427,8 @@ export default function AdminDashboardPage() {
                   </p>
                 </div>
 
+                <Separator />
+
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                     <Tag className="w-3 h-3" /> Transaction Type
@@ -577,7 +583,7 @@ export default function AdminDashboardPage() {
                     <div className="flex items-center gap-4">
                       <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border shadow-sm bg-muted">
                         <Image 
-                          src={property.imageUrl || `https://picsum.photos/seed/${property.id}/200/200`} 
+                          src={property.imageUrl || (property.imageUrls && property.imageUrls[0]) || `https://picsum.photos/seed/${property.id}/200/200`} 
                           alt={property.title} 
                           fill 
                           className="object-cover" 
