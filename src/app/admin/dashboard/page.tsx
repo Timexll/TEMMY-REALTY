@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert, Trash } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert, Trash, Key, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Property, PropertyType } from '@/app/lib/types';
@@ -42,7 +42,6 @@ export default function AdminDashboardPage() {
   const db = useFirestore();
   const { user, isUserLoading } = useUser();
   
-  // Verify Admin Status
   const adminRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, 'admin_users', user.uid);
@@ -50,11 +49,9 @@ export default function AdminDashboardPage() {
   
   const { data: adminData, isLoading: isAdminDataLoading } = useDoc(adminRef);
 
-  // Hardcoded bypass for the master admin email (Case-Insensitive)
   const isMasterAdmin = user?.email?.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
   const isAuthorized = !!adminData || isMasterAdmin;
 
-  // Real-time Properties Collection
   const propertiesRef = useMemoFirebase(() => {
     if (!db) return null;
     return collection(db, 'property_listings');
@@ -67,14 +64,12 @@ export default function AdminDashboardPage() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Partial<Property> | null>(null);
 
-  // Protection effect: Redirect if not logged in
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/admin/login');
     }
   }, [user, isUserLoading, router]);
 
-  // Authorization check
   useEffect(() => {
     if (!isUserLoading && !isAdminDataLoading && user && !isAuthorized) {
       toast({
@@ -115,26 +110,12 @@ export default function AdminDashboardPage() {
 
   const handleDelete = (id: string) => {
     if (!db) return;
-    if (confirm('Are you sure you want to delete this listing? This action cannot be undone.')) {
+    if (confirm('Are you sure you want to delete this listing?')) {
       const docRef = doc(db, 'property_listings', id);
       deleteDocumentNonBlocking(docRef);
       toast({
         title: "Listing Deleted",
-        description: "The property has been successfully removed from the system.",
-      });
-    }
-  };
-
-  const handleDeleteAll = () => {
-    if (!db || !firestoreProperties || firestoreProperties.length === 0) return;
-    if (confirm('CRITICAL ACTION: Are you sure you want to delete ALL property listings? This action cannot be undone and all data will be lost.')) {
-      firestoreProperties.forEach(property => {
-        const docRef = doc(db, 'property_listings', property.id);
-        deleteDocumentNonBlocking(docRef);
-      });
-      toast({
-        title: "Database Cleared",
-        description: `Successfully removed all ${firestoreProperties.length} listings.`,
+        description: "The property has been successfully removed.",
       });
     }
   };
@@ -144,7 +125,7 @@ export default function AdminDashboardPage() {
       toast({
         variant: "destructive",
         title: "Missing Information",
-        description: "Please enter at least a title and location for AI generation.",
+        description: "Please enter a title and location for AI generation.",
       });
       return;
     }
@@ -164,13 +145,13 @@ export default function AdminDashboardPage() {
       setEditingProperty(prev => ({ ...prev, description: result.description }));
       toast({
         title: "Description Generated",
-        description: "AI Listing Assistant has updated the description field.",
+        description: "AI Listing Assistant has updated the description.",
       });
     } catch (error) {
       toast({
         variant: "destructive",
         title: "AI Generation Failed",
-        description: "The listing assistant is currently busy. Please try manual entry.",
+        description: "The listing assistant is busy. Please try manual entry.",
       });
     } finally {
       setIsAiLoading(false);
@@ -179,11 +160,11 @@ export default function AdminDashboardPage() {
 
   const handleSave = () => {
     if (!db || !user) return;
-    if (!editingProperty?.title || !editingProperty?.price) {
+    if (!editingProperty?.title || !editingProperty?.price || !editingProperty?.type) {
       toast({
         variant: "destructive",
         title: "Validation Error",
-        description: "Title and price are required fields.",
+        description: "Title, Price, and Listing Type are required.",
       });
       return;
     }
@@ -235,7 +216,7 @@ export default function AdminDashboardPage() {
           </div>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold text-primary font-headline">Unauthorized Access</h1>
-            <p className="text-muted-foreground">Your account is not registered as an authorized administrator.</p>
+            <p className="text-muted-foreground">You are not authorized to access the admin dashboard.</p>
           </div>
           <Button className="w-full" onClick={() => router.push('/admin/login')}>Return to Login</Button>
         </div>
@@ -248,36 +229,44 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-primary font-bold tracking-widest uppercase text-xs">
-            <LayoutDashboard className="w-4 h-4" /> Secure Admin Dashboard
+            <LayoutDashboard className="w-4 h-4" /> Secure Property Management
           </div>
-          <h1 className="text-4xl font-headline font-bold text-primary">Manage Listings</h1>
-          <p className="text-sm text-muted-foreground">Welcome back, {adminData?.fullName || user.email}</p>
+          <h1 className="text-4xl font-headline font-bold text-primary">Listing Inventory</h1>
+          <p className="text-sm text-muted-foreground">Admin: {adminData?.fullName || user.email}</p>
         </div>
         
         <div className="flex gap-4">
-          <Button 
-            variant="destructive" 
-            onClick={handleDeleteAll} 
-            className="h-12 px-6 font-bold gap-2 shadow-xl shadow-destructive/10"
-            disabled={!firestoreProperties || firestoreProperties.length === 0}
-          >
-            <Trash className="w-5 h-5" /> Clear All
-          </Button>
-
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => setEditingProperty({ type: 'Buy', amenities: [], bedrooms: 1, bathrooms: 1 })} className="h-12 px-6 font-bold gap-2 shadow-xl shadow-primary/10">
-                <Plus className="w-5 h-5" /> Add Property
+                <Plus className="w-5 h-5" /> Create New Listing
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-headline font-bold">
-                  {editingProperty?.id ? 'Edit Listing Details' : 'Create New Listing'}
+                  {editingProperty?.id ? 'Modify Property' : 'Publish New Listing'}
                 </DialogTitle>
               </DialogHeader>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6">
                 <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <Tag className="w-3 h-3" /> Transaction Type
+                    </label>
+                    <Select 
+                      value={editingProperty?.type} 
+                      onValueChange={(val: PropertyType) => setEditingProperty(prev => ({ ...prev, type: val }))}
+                    >
+                      <SelectTrigger className="h-12 border-primary/20 bg-primary/5">
+                        <SelectValue placeholder="Select Listing Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Buy">For Sale (Direct Purchase)</SelectItem>
+                        <SelectItem value="Rent">For Rent (Monthly Lease)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                       <Building2 className="w-3 h-3" /> Property Title
@@ -291,48 +280,35 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Listing Type</label>
-                      <Select 
-                        value={editingProperty?.type} 
-                        onValueChange={(val: PropertyType) => setEditingProperty(prev => ({ ...prev, type: val }))}
-                      >
-                        <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Buy">For Sale</SelectItem>
-                          <SelectItem value="Rent">For Rent</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Style/Category</label>
                       <Input 
                         value={editingProperty?.category || ''} 
                         onChange={e => setEditingProperty(prev => ({ ...prev, category: e.target.value }))}
-                        placeholder="e.g. Modern Villa" 
+                        placeholder="e.g. Mansion" 
+                        className="h-12"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <MapPin className="w-3 h-3" /> Location
+                      </label>
+                      <Input 
+                        value={editingProperty?.location || ''} 
+                        onChange={e => setEditingProperty(prev => ({ ...prev, location: e.target.value }))}
+                        placeholder="City, State" 
                         className="h-12"
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <MapPin className="w-3 h-3" /> Location
-                    </label>
-                    <Input 
-                      value={editingProperty?.location || ''} 
-                      onChange={e => setEditingProperty(prev => ({ ...prev, location: e.target.value }))}
-                      placeholder="City, State" 
-                      className="h-12"
-                    />
-                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <DollarSign className="w-3 h-3" /> Price/Rent
+                        <DollarSign className="w-3 h-3" /> {editingProperty?.type === 'Rent' ? 'Monthly Rent' : 'Selling Price'}
                       </label>
                       <Input 
                         value={editingProperty?.price || ''} 
                         onChange={e => setEditingProperty(prev => ({ ...prev, price: e.target.value }))}
-                        placeholder="$0.00 or $0/mo" 
+                        placeholder={editingProperty?.type === 'Rent' ? '$2,500/mo' : '$450,000'} 
                         className="h-12"
                       />
                     </div>
@@ -353,7 +329,7 @@ export default function AdminDashboardPage() {
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">AI Listing Description</label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description (AI Assisted)</label>
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -362,13 +338,13 @@ export default function AdminDashboardPage() {
                         disabled={isAiLoading}
                       >
                         {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                        Generate with AI
+                        Auto-Write
                       </Button>
                     </div>
                     <Textarea 
                       value={editingProperty?.description || ''} 
                       onChange={e => setEditingProperty(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Auto-generate or type a professional description..."
+                      placeholder="Describe the property features..."
                       className="h-[188px] resize-none border-muted"
                     />
                   </div>
@@ -399,8 +375,8 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
               <DialogFooter className="border-t pt-6">
-                <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="font-bold">Discard</Button>
-                <Button onClick={handleSave} className="font-bold px-10">Save Changes</Button>
+                <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="font-bold">Cancel</Button>
+                <Button onClick={handleSave} className="font-bold px-10">Confirm & Post</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -412,22 +388,28 @@ export default function AdminDashboardPage() {
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
-              placeholder="Search properties by title or location..." 
+              placeholder="Search by title or location..." 
               className="pl-10 h-10 border-none bg-white shadow-sm"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-6">
             <div className="text-right">
-              <div className="text-xs font-bold uppercase text-muted-foreground">Total Listings</div>
-              <div className="text-2xl font-bold text-primary">{filteredProperties.length}</div>
+              <div className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1">
+                <Tag className="w-3 h-3" /> For Sale
+              </div>
+              <div className="text-2xl font-bold text-primary">
+                {firestoreProperties?.filter(p => p.type === 'Buy').length || 0}
+              </div>
             </div>
             <Separator orientation="vertical" className="h-10" />
             <div className="text-right">
-              <div className="text-xs font-bold uppercase text-muted-foreground">Active Sales</div>
+              <div className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1">
+                <Key className="w-3 h-3" /> For Rent
+              </div>
               <div className="text-2xl font-bold text-secondary">
-                {filteredProperties.filter(p => p.type === 'Buy').length}
+                {firestoreProperties?.filter(p => p.type === 'Rent').length || 0}
               </div>
             </div>
           </div>
@@ -436,11 +418,10 @@ export default function AdminDashboardPage() {
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead className="font-bold w-[40%]">Property Information</TableHead>
-              <TableHead className="font-bold">Type</TableHead>
-              <TableHead className="font-bold">Value</TableHead>
-              <TableHead className="font-bold">Inventory</TableHead>
-              <TableHead className="text-right font-bold">Actions</TableHead>
+              <TableHead className="font-bold w-[40%]">Property Details</TableHead>
+              <TableHead className="font-bold">Listing Type</TableHead>
+              <TableHead className="font-bold">Price/Rent</TableHead>
+              <TableHead className="font-bold text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -465,22 +446,18 @@ export default function AdminDashboardPage() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    {property.type === 'Buy' ? (
-                      <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none">Sale</Badge>
-                    ) : (
-                      <Badge className="bg-secondary/20 text-primary border-none">Rent</Badge>
-                    )}
-                  </div>
+                  {property.type === 'Buy' ? (
+                    <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 flex items-center gap-1 w-fit">
+                      <Tag className="w-3 h-3" /> FOR SALE
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-secondary/20 text-primary border-secondary/20 hover:bg-secondary/30 flex items-center gap-1 w-fit">
+                      <Key className="w-3 h-3" /> FOR RENT
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="font-bold text-sm text-primary">
                   {property.price}
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">System Status</span>
-                    <Badge variant="outline" className="text-[10px] py-0.5 border-green-500 text-green-600 bg-green-50 w-fit">ACTIVE</Badge>
-                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
@@ -508,8 +485,8 @@ export default function AdminDashboardPage() {
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                  {isPropertiesLoading ? 'Loading listings...' : 'No properties found. Start by adding a new one!'}
+                <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
+                  {isPropertiesLoading ? 'Loading listings...' : 'No properties found.'}
                 </TableCell>
               </TableRow>
             )}
@@ -523,7 +500,7 @@ export default function AdminDashboardPage() {
           className="text-muted-foreground gap-2 border-dashed border-2 px-8 h-12" 
           onClick={handleLogout}
         >
-          <LogOut className="w-4 h-4" /> Finalize Session & Log Out
+          <LogOut className="w-4 h-4" /> Finalize Session
         </Button>
       </div>
     </div>
