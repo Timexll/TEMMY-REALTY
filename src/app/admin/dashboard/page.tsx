@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PROPERTIES as INITIAL_PROPERTIES } from '@/app/lib/mock-data';
 import { Property, PropertyType } from '@/app/lib/types';
 import {
   Table,
@@ -31,11 +30,11 @@ import { generatePropertyDescription } from '@/ai/flows/ai-property-description-
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase, useCollection, deleteDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc } from 'firebase/firestore';
+import { doc, collection, serverTimestamp } from 'firebase/firestore';
 
-const MASTER_ADMIN_EMAIL = 'Jordankatie767@gmail.com';
+const MASTER_ADMIN_EMAIL = 'jordankatie767@gmail.com';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -51,11 +50,18 @@ export default function AdminDashboardPage() {
   
   const { data: adminData, isLoading: isAdminDataLoading } = useDoc(adminRef);
 
-  // Hardcoded bypass for the master admin email
-  const isMasterAdmin = user?.email === MASTER_ADMIN_EMAIL;
+  // Hardcoded bypass for the master admin email (Case-Insensitive)
+  const isMasterAdmin = user?.email?.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
   const isAuthorized = !!adminData || isMasterAdmin;
 
-  const [properties, setProperties] = useState<Property[]>(INITIAL_PROPERTIES || []);
+  // Real-time Properties Collection
+  const propertiesRef = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'property_listings');
+  }, [db]);
+
+  const { data: firestoreProperties, isLoading: isPropertiesLoading } = useCollection(propertiesRef);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -100,16 +106,18 @@ export default function AdminDashboardPage() {
   };
 
   const filteredProperties = useMemo(() => {
-    const list = Array.isArray(properties) ? properties : [];
+    const list = Array.isArray(firestoreProperties) ? firestoreProperties : [];
     return list.filter(p => 
       (p.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
       (p.location || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [properties, searchQuery]);
+  }, [firestoreProperties, searchQuery]);
 
   const handleDelete = (id: string) => {
+    if (!db) return;
     if (confirm('Are you sure you want to delete this listing? This action cannot be undone.')) {
-      setProperties(prev => prev.filter(p => p.id !== id));
+      const docRef = doc(db, 'property_listings', id);
+      deleteDocumentNonBlocking(docRef);
       toast({
         title: "Listing Deleted",
         description: "The property has been successfully removed from the system.",
@@ -130,7 +138,7 @@ export default function AdminDashboardPage() {
     setIsAiLoading(true);
     try {
       const result = await generatePropertyDescription({
-        propertyType: editingProperty.category || editingProperty.type || 'Residential',
+        propertyType: editingProperty.category || 'Residential',
         location: editingProperty.location,
         bedrooms: editingProperty.bedrooms || 0,
         bathrooms: editingProperty.bathrooms || 0,
@@ -156,6 +164,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleSave = () => {
+    if (!db || !user) return;
     if (!editingProperty?.title || !editingProperty?.price) {
       toast({
         variant: "destructive",
@@ -165,17 +174,25 @@ export default function AdminDashboardPage() {
       return;
     }
 
+    const payload = {
+      ...editingProperty,
+      adminId: user.uid,
+      lastUpdatedDate: new Date().toISOString(),
+      status: editingProperty.status || 'Available',
+    };
+
     if (editingProperty?.id) {
-      setProperties(prev => prev.map(p => p.id === editingProperty.id ? { ...p, ...editingProperty } as Property : p));
+      const docRef = doc(db, 'property_listings', editingProperty.id);
+      setDocumentNonBlocking(docRef, payload, { merge: true });
     } else {
-      const newProperty = {
-        ...editingProperty,
-        id: Math.random().toString(36).substr(2, 9),
-        imageUrl: `https://picsum.photos/seed/${Math.random()}/1200/800`,
-        amenities: editingProperty.amenities || [],
-      } as Property;
-      setProperties(prev => [...prev, newProperty]);
+      const colRef = collection(db, 'property_listings');
+      addDocumentNonBlocking(colRef, {
+        ...payload,
+        listingDate: new Date().toISOString(),
+        imageUrl: editingProperty.imageUrl || `https://picsum.photos/seed/${Math.random()}/1200/800`,
+      });
     }
+
     setIsDialogOpen(false);
     setEditingProperty(null);
     toast({
@@ -184,12 +201,12 @@ export default function AdminDashboardPage() {
     });
   };
 
-  if (isUserLoading || isAdminDataLoading) {
+  if (isUserLoading || isAdminDataLoading || isPropertiesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/20">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground font-medium animate-pulse">Verifying Admin Credentials...</p>
+          <p className="text-muted-foreground font-medium animate-pulse">Synchronizing Admin Panel...</p>
         </div>
       </div>
     );
@@ -379,12 +396,14 @@ export default function AdminDashboardPage() {
           <div className="flex gap-4">
             <div className="text-right">
               <div className="text-xs font-bold uppercase text-muted-foreground">Total Listings</div>
-              <div className="text-2xl font-bold text-primary">{properties.length}</div>
+              <div className="text-2xl font-bold text-primary">{firestoreProperties?.length || 0}</div>
             </div>
             <Separator orientation="vertical" className="h-10" />
             <div className="text-right">
               <div className="text-xs font-bold uppercase text-muted-foreground">Active Sales</div>
-              <div className="text-2xl font-bold text-secondary">{properties.filter(p => p.type === 'Buy').length}</div>
+              <div className="text-2xl font-bold text-secondary">
+                {firestoreProperties?.filter(p => p.type === 'Buy').length || 0}
+              </div>
             </div>
           </div>
         </div>
@@ -405,7 +424,12 @@ export default function AdminDashboardPage() {
                 <TableCell>
                   <div className="flex items-center gap-4">
                     <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border shadow-sm">
-                      <Image src={property.imageUrl} alt={property.title} fill className="object-cover" />
+                      <Image 
+                        src={property.imageUrl || `https://picsum.photos/seed/${property.id}/200/200`} 
+                        alt={property.title} 
+                        fill 
+                        className="object-cover" 
+                      />
                     </div>
                     <div>
                       <div className="font-bold text-base text-primary">{property.title}</div>
@@ -460,7 +484,7 @@ export default function AdminDashboardPage() {
             )) : (
               <TableRow>
                 <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                  No properties match your search criteria.
+                  {isPropertiesLoading ? 'Loading listings...' : 'No properties found. Start by adding a new one!'}
                 </TableCell>
               </TableRow>
             )}
