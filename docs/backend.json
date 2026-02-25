@@ -1,0 +1,215 @@
+{
+  "entities": {
+    "AdminUser": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AdminUser",
+      "type": "object",
+      "description": "Represents an authorized administrator account on the Temmy Realty Hub platform, managing property listings and rental/sales processes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AdminUser entity."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "The full name of the administrator."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the administrator, used for login and contact.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The administrative role assigned to the user, defining their permissions and access level."
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "The timestamp when the admin user account was registered.",
+          "format": "date-time"
+        },
+        "lastLoginDate": {
+          "type": "string",
+          "description": "The timestamp of the administrator's last successful login.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "fullName",
+        "email",
+        "role",
+        "registrationDate"
+      ]
+    },
+    "PropertyListing": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PropertyListing",
+      "type": "object",
+      "description": "Represents a single real estate property available for either sale or rent on the Temmy Realty Hub platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PropertyListing entity."
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to the AdminUser who created or last updated this property listing. (Relationship: AdminUser 1:N PropertyListing)"
+        },
+        "title": {
+          "type": "string",
+          "description": "A concise title for the property listing, e.g., 'Modern American Villa in Miami'."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the property, highlighting its features and unique selling/renting points."
+        },
+        "listingType": {
+          "type": "string",
+          "description": "Specifies whether the property is for 'Sale' or 'Rent'."
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "The specific type of property, such as 'Luxury Family Home', 'Downtown Apartment', 'Luxury Condo', 'Studio Flat', 'Suburban House', 'Waterfront Property', or 'Newly Built Smart Home'."
+        },
+        "address": {
+          "type": "string",
+          "description": "The street address of the property."
+        },
+        "city": {
+          "type": "string",
+          "description": "The city where the property is located."
+        },
+        "state": {
+          "type": "string",
+          "description": "The state where the property is located (e.g., 'CA', 'FL')."
+        },
+        "zipCode": {
+          "type": "string",
+          "description": "The ZIP code of the property's location."
+        },
+        "price": {
+          "type": "number",
+          "description": "The selling price of the property (for sale listings) or the monthly rental price (for rent listings)."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the price (e.g., 'USD')."
+        },
+        "numBedrooms": {
+          "type": "number",
+          "description": "The total number of bedrooms in the property."
+        },
+        "numBathrooms": {
+          "type": "number",
+          "description": "The total number of bathrooms in the property."
+        },
+        "squareFootage": {
+          "type": "number",
+          "description": "The total interior living area of the property in square feet."
+        },
+        "lotSize": {
+          "type": "number",
+          "description": "The total area of the property's lot in square feet, applicable for houses with gardens or land."
+        },
+        "yearBuilt": {
+          "type": "number",
+          "description": "The year the property was originally constructed."
+        },
+        "amenities": {
+          "type": "array",
+          "description": "A list of amenities and key features available with the property (e.g., 'Parking Space', 'Garden', 'Modern Kitchen', 'Secure Neighborhood', '24/7 Support Assistance').",
+          "items": {
+            "type": "string"
+          }
+        },
+        "imageUrls": {
+          "type": "array",
+          "description": "An array of URLs pointing to high-quality images of the property.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "type": "string",
+          "description": "The current availability status of the property listing (e.g., 'Available', 'Under Contract', 'Sold', 'Rented', 'Pending')."
+        },
+        "listingDate": {
+          "type": "string",
+          "description": "The date and time when the property was first listed.",
+          "format": "date-time"
+        },
+        "lastUpdatedDate": {
+          "type": "string",
+          "description": "The date and time when the property listing was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "adminId",
+        "title",
+        "description",
+        "listingType",
+        "propertyType",
+        "address",
+        "city",
+        "state",
+        "zipCode",
+        "price",
+        "currency",
+        "numBedrooms",
+        "numBathrooms",
+        "squareFootage",
+        "amenities",
+        "imageUrls",
+        "status",
+        "listingDate",
+        "lastUpdatedDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/admin_users/{adminId}",
+        "definition": {
+          "entityName": "AdminUser",
+          "schema": {
+            "$ref": "#/backend/entities/AdminUser"
+          },
+          "description": "Stores profile information for authorized administrators. The document ID (`adminId`) corresponds directly to the Firebase Authentication UID of the administrator. The existence of a document at this path signifies an active admin role. Includes fields for full name, email, role, and timestamps.",
+          "params": [
+            {
+              "name": "adminId",
+              "description": "The unique Firebase Authentication User ID (UID) of the administrator."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/property_listings/{propertyId}",
+        "definition": {
+          "entityName": "PropertyListing",
+          "schema": {
+            "$ref": "#/backend/entities/PropertyListing"
+          },
+          "description": "Contains all property listings available for sale or rent. Each document includes the 'adminId' (the Firebase Auth UID of the managing administrator) denormalized into the document itself for authorization independence. This enables secure public read access for 'Available' listings and restricted write access to the owning administrator. All documents in this collection share the same security posture for public read and admin write operations.",
+          "params": [
+            {
+              "name": "propertyId",
+              "description": "The unique identifier for a specific property listing."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure for Temmy Realty Hub prioritizes security, scalability, and debuggability in line with the core design principles. It establishes two primary collections: 'admin_users' for managing administrative roles and 'property_listings' for all property data.\n\n**Authorization Independence:**\n1.  **Global Admin Role:** Instead of relying on custom claims or complex hierarchical lookups for administrative privileges, an administrator's status is determined by the *existence* of their user ID within the `/admin_users/{adminId}` collection. While checking for existence (`exists()`) is technically a database read, it's a common and accepted pattern for global role checks in security rules, explicitly permitted by the 'Global Roles (DBAC)' mandate. This avoids complex hierarchical `get()` calls that would break atomic operations.\n2.  **Property Ownership Denormalization:** Each `property_listing` document explicitly includes the `adminId` of the administrator who owns/manages that listing. This critical denormalization ensures that rules for creating, updating, or deleting a property listing can directly reference `resource.data.adminId` and compare it against `request.auth.uid`. This completely eliminates the need for `get()` calls to a parent document or related collection to determine ownership for authorization, enabling atomic write operations and simplifying rules significantly.\n\n**QAPs (Rules are not Filters):**\n1.  **Public Property Listings:** The `/property_listings` collection is designed to support secure public `list` operations. Security rules will ensure that unauthenticated users (or any user) can only read properties with a `status` of 'Available'. This prevents clients from inadvertently retrieving sensitive or unavailable listings, adhering to the QAP principle that rules enforce security, not merely filter data.\n2.  **Admin Property Management:** Administrators can query and list *all* properties they own, regardless of status, by filtering on their `adminId` in their client-side queries. The security rules will permit this `read` access for `property_listings` if `request.auth.uid` matches the `adminId` field within the document and the user is verified as an administrator via the `/admin_users` collection. This allows robust and secure listing capabilities for both public users and administrators without compromising data integrity or requiring client-side filtering for sensitive data."
+  }
+}
