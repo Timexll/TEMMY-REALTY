@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Property, PropertyType } from '@/app/lib/types';
@@ -125,6 +125,20 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleDeleteAll = () => {
+    if (!db || !firestoreProperties || firestoreProperties.length === 0) return;
+    if (confirm('CRITICAL ACTION: Are you sure you want to delete ALL property listings? This action cannot be undone and all data will be lost.')) {
+      firestoreProperties.forEach(property => {
+        const docRef = doc(db, 'property_listings', property.id);
+        deleteDocumentNonBlocking(docRef);
+      });
+      toast({
+        title: "Database Cleared",
+        description: `Successfully removed all ${firestoreProperties.length} listings.`,
+      });
+    }
+  };
+
   const handleAiGenerate = async () => {
     if (!editingProperty?.title || !editingProperty?.location) {
       toast({
@@ -240,146 +254,157 @@ export default function AdminDashboardPage() {
           <p className="text-sm text-muted-foreground">Welcome back, {adminData?.fullName || user.email}</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingProperty({ type: 'Buy', amenities: [], bedrooms: 1, bathrooms: 1 })} className="h-12 px-6 font-bold gap-2 shadow-xl shadow-primary/10">
-              <Plus className="w-5 h-5" /> Add Property
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-headline font-bold">
-                {editingProperty?.id ? 'Edit Listing Details' : 'Create New Listing'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                    <Building2 className="w-3 h-3" /> Property Title
-                  </label>
-                  <Input 
-                    value={editingProperty?.title || ''} 
-                    onChange={e => setEditingProperty(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="e.g. Modern Villa with Pool" 
-                    className="h-12 border-muted"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Listing Type</label>
-                    <Select 
-                      value={editingProperty?.type} 
-                      onValueChange={(val: PropertyType) => setEditingProperty(prev => ({ ...prev, type: val }))}
-                    >
-                      <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Buy">For Sale</SelectItem>
-                        <SelectItem value="Rent">For Rent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</label>
-                    <Input 
-                      value={editingProperty?.category || ''} 
-                      onChange={e => setEditingProperty(prev => ({ ...prev, category: e.target.value }))}
-                      placeholder="e.g. Modern Villa" 
-                      className="h-12"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                    <MapPin className="w-3 h-3" /> Location
-                  </label>
-                  <Input 
-                    value={editingProperty?.location || ''} 
-                    onChange={e => setEditingProperty(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="City, State" 
-                    className="h-12"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <DollarSign className="w-3 h-3" /> Price/Rent
-                    </label>
-                    <Input 
-                      value={editingProperty?.price || ''} 
-                      onChange={e => setEditingProperty(prev => ({ ...prev, price: e.target.value }))}
-                      placeholder="$0.00 or $0/mo" 
-                      className="h-12"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <Maximize className="w-3 h-3" /> Sq Ft
-                    </label>
-                    <Input 
-                      type="number"
-                      value={editingProperty?.sqft || ''} 
-                      onChange={e => setEditingProperty(prev => ({ ...prev, sqft: parseInt(e.target.value) || 0 }))}
-                      className="h-12"
-                    />
-                  </div>
-                </div>
-              </div>
+        <div className="flex gap-4">
+          <Button 
+            variant="destructive" 
+            onClick={handleDeleteAll} 
+            className="h-12 px-6 font-bold gap-2 shadow-xl shadow-destructive/10"
+            disabled={!firestoreProperties || firestoreProperties.length === 0}
+          >
+            <Trash className="w-5 h-5" /> Clear All
+          </Button>
 
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">AI Listing Description</label>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-8 text-[11px] font-bold gap-1 border-secondary text-primary hover:bg-secondary/10"
-                      onClick={handleAiGenerate}
-                      disabled={isAiLoading}
-                    >
-                      {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                      Generate with AI
-                    </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditingProperty({ type: 'Buy', amenities: [], bedrooms: 1, bathrooms: 1 })} className="h-12 px-6 font-bold gap-2 shadow-xl shadow-primary/10">
+                <Plus className="w-5 h-5" /> Add Property
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-headline font-bold">
+                  {editingProperty?.id ? 'Edit Listing Details' : 'Create New Listing'}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <Building2 className="w-3 h-3" /> Property Title
+                    </label>
+                    <Input 
+                      value={editingProperty?.title || ''} 
+                      onChange={e => setEditingProperty(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="e.g. Modern Villa with Pool" 
+                      className="h-12 border-muted"
+                    />
                   </div>
-                  <Textarea 
-                    value={editingProperty?.description || ''} 
-                    onChange={e => setEditingProperty(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Auto-generate or type a professional description..."
-                    className="h-[188px] resize-none border-muted"
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Listing Type</label>
+                      <Select 
+                        value={editingProperty?.type} 
+                        onValueChange={(val: PropertyType) => setEditingProperty(prev => ({ ...prev, type: val }))}
+                      >
+                        <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Buy">For Sale</SelectItem>
+                          <SelectItem value="Rent">For Rent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</label>
+                      <Input 
+                        value={editingProperty?.category || ''} 
+                        onChange={e => setEditingProperty(prev => ({ ...prev, category: e.target.value }))}
+                        placeholder="e.g. Modern Villa" 
+                        className="h-12"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <MapPin className="w-3 h-3" /> Location
+                    </label>
+                    <Input 
+                      value={editingProperty?.location || ''} 
+                      onChange={e => setEditingProperty(prev => ({ ...prev, location: e.target.value }))}
+                      placeholder="City, State" 
+                      className="h-12"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <DollarSign className="w-3 h-3" /> Price/Rent
+                      </label>
+                      <Input 
+                        value={editingProperty?.price || ''} 
+                        onChange={e => setEditingProperty(prev => ({ ...prev, price: e.target.value }))}
+                        placeholder="$0.00 or $0/mo" 
+                        className="h-12"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Maximize className="w-3 h-3" /> Sq Ft
+                      </label>
+                      <Input 
+                        type="number"
+                        value={editingProperty?.sqft || ''} 
+                        onChange={e => setEditingProperty(prev => ({ ...prev, sqft: parseInt(e.target.value) || 0 }))}
+                        className="h-12"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+
+                <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <Bed className="w-3 h-3" /> Bedrooms
-                    </label>
-                    <Input 
-                      type="number"
-                      value={editingProperty?.bedrooms || 0} 
-                      onChange={e => setEditingProperty(prev => ({ ...prev, bedrooms: parseInt(e.target.value) || 0 }))}
-                      className="h-12"
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">AI Listing Description</label>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-[11px] font-bold gap-1 border-secondary text-primary hover:bg-secondary/10"
+                        onClick={handleAiGenerate}
+                        disabled={isAiLoading}
+                      >
+                        {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        Generate with AI
+                      </Button>
+                    </div>
+                    <Textarea 
+                      value={editingProperty?.description || ''} 
+                      onChange={e => setEditingProperty(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Auto-generate or type a professional description..."
+                      className="h-[188px] resize-none border-muted"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <Bath className="w-3 h-3" /> Bathrooms
-                    </label>
-                    <Input 
-                      type="number"
-                      value={editingProperty?.bathrooms || 0} 
-                      onChange={e => setEditingProperty(prev => ({ ...prev, bathrooms: parseInt(e.target.value) || 0 }))}
-                      className="h-12"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Bed className="w-3 h-3" /> Bedrooms
+                      </label>
+                      <Input 
+                        type="number"
+                        value={editingProperty?.bedrooms || 0} 
+                        onChange={e => setEditingProperty(prev => ({ ...prev, bedrooms: parseInt(e.target.value) || 0 }))}
+                        className="h-12"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Bath className="w-3 h-3" /> Bathrooms
+                      </label>
+                      <Input 
+                        type="number"
+                        value={editingProperty?.bathrooms || 0} 
+                        onChange={e => setEditingProperty(prev => ({ ...prev, bathrooms: parseInt(e.target.value) || 0 }))}
+                        className="h-12"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <DialogFooter className="border-t pt-6">
-              <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="font-bold">Discard</Button>
-              <Button onClick={handleSave} className="font-bold px-10">Save Changes</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter className="border-t pt-6">
+                <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="font-bold">Discard</Button>
+                <Button onClick={handleSave} className="font-bold px-10">Save Changes</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl shadow-xl overflow-hidden border">
