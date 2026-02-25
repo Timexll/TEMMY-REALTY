@@ -12,7 +12,10 @@ import { Card, CardContent } from '@/components/ui/card';
 export default function PropertyDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const property = PROPERTIES.find(p => p.id === id);
+  
+  // Defensive check for PROPERTIES array
+  const propertyList = Array.isArray(PROPERTIES) ? PROPERTIES : [];
+  const property = propertyList.find(p => p.id === id);
 
   if (!property) {
     return (
@@ -100,7 +103,7 @@ export default function PropertyDetailPage() {
               <div className="space-y-4">
                 <h3 className="text-2xl font-headline font-bold text-primary">Key Amenities</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {property.amenities.map((amenity, idx) => (
+                  {(property.amenities || []).map((amenity, idx) => (
                     <div key={idx} className="flex items-center gap-3 bg-white p-4 rounded-xl border">
                       <CheckCircle2 className="w-5 h-5 text-secondary" />
                       <span className="font-medium">{amenity}</span>

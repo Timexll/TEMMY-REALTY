@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
-import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, Key, Sparkles, Loader2, DollarSign, MapPin, Maximize, Bed, Bath } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PROPERTIES as INITIAL_PROPERTIES } from '@/app/lib/mock-data';
@@ -34,16 +34,17 @@ import { useRouter } from 'next/navigation';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [properties, setProperties] = useState<Property[]>(INITIAL_PROPERTIES);
+  const [properties, setProperties] = useState<Property[]>(INITIAL_PROPERTIES || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Partial<Property> | null>(null);
 
   const filteredProperties = useMemo(() => {
-    return properties.filter(p => 
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.location.toLowerCase().includes(searchQuery.toLowerCase())
+    const list = Array.isArray(properties) ? properties : [];
+    return list.filter(p => 
+      (p.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (p.location || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [properties, searchQuery]);
 
