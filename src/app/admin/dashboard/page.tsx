@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PROPERTIES as INITIAL_PROPERTIES } from '@/app/lib/mock-data';
@@ -31,25 +31,50 @@ import { generatePropertyDescription } from '@/ai/flows/ai-property-description-
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const auth = useAuth();
+  const db = useFirestore();
   const { user, isUserLoading } = useUser();
+  
+  // Verify Admin Status
+  const adminRef = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return doc(db, 'admin_users', user.uid);
+  }, [db, user]);
+  
+  const { data: adminData, isLoading: isAdminDataLoading } = useDoc(adminRef);
+
   const [properties, setProperties] = useState<Property[]>(INITIAL_PROPERTIES || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Partial<Property> | null>(null);
 
-  // Protection effect
+  // Protection effect: Redirect if not logged in
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/admin/login');
     }
   }, [user, isUserLoading, router]);
+
+  // Authorization check: Redirect if logged in but not an authorized admin
+  useEffect(() => {
+    if (!isUserLoading && !isAdminDataLoading && user && !adminData) {
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "You are not authorized to access the admin dashboard.",
+      });
+      // Optionally sign out unauthorized users
+      if (auth) signOut(auth);
+      router.push('/admin/login');
+    }
+  }, [user, adminData, isUserLoading, isAdminDataLoading, router, auth]);
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -154,15 +179,33 @@ export default function AdminDashboardPage() {
     });
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || isAdminDataLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-muted/20">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground font-medium animate-pulse">Verifying Admin Credentials...</p>
+        </div>
       </div>
     );
   }
 
-  if (!user) return null;
+  if (!user || !adminData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-6 bg-white p-10 rounded-3xl shadow-2xl border">
+          <div className="bg-destructive/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
+            <ShieldAlert className="w-10 h-10 text-destructive" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-primary font-headline">Unauthorized Access</h1>
+            <p className="text-muted-foreground">Your account is not registered as an authorized administrator.</p>
+          </div>
+          <Button className="w-full" onClick={() => router.push('/admin/login')}>Return to Login</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -172,6 +215,7 @@ export default function AdminDashboardPage() {
             <LayoutDashboard className="w-4 h-4" /> Secure Admin Dashboard
           </div>
           <h1 className="text-4xl font-headline font-bold text-primary">Manage Listings</h1>
+          <p className="text-sm text-muted-foreground">Welcome back, {adminData.fullName}</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
