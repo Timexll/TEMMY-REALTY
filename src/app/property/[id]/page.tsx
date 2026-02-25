@@ -3,25 +3,43 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Bed, Bath, Move, MapPin, CheckCircle2, Phone, Mail, MessageCircle, Share2, Heart } from 'lucide-react';
+import { ArrowLeft, Bed, Bath, Move, MapPin, CheckCircle2, Phone, Mail, MessageCircle, Share2, Heart, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PROPERTIES } from '@/app/lib/mock-data';
 import { Card, CardContent } from '@/components/ui/card';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 export default function PropertyDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const db = useFirestore();
   
-  // Defensive check for PROPERTIES array
-  const propertyList = Array.isArray(PROPERTIES) ? PROPERTIES : [];
-  const property = propertyList.find(p => p.id === id);
+  const propertyRef = useMemoFirebase(() => {
+    if (!db || typeof id !== 'string') return null;
+    return doc(db, 'property_listings', id);
+  }, [db, id]);
+
+  const { data: property, isLoading } = useDoc(propertyRef);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[80vh] gap-4">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        <p className="text-muted-foreground font-medium animate-pulse">Loading property details...</p>
+      </div>
+    );
+  }
 
   if (!property) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-        <h1 className="text-2xl font-bold">Property not found</h1>
-        <Button onClick={() => router.back()}>Go Back</Button>
+        <div className="bg-muted/30 p-6 rounded-full">
+          <MapPin className="w-12 h-12 text-muted-foreground/50" />
+        </div>
+        <h1 className="text-2xl font-bold text-primary">Property not found</h1>
+        <p className="text-muted-foreground">This listing may have been removed or is currently unavailable.</p>
+        <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
       </div>
     );
   }
@@ -38,7 +56,7 @@ export default function PropertyDetailPage() {
           <div className="lg:col-span-2 space-y-8">
             <div className="relative h-[400px] md:h-[600px] w-full rounded-3xl overflow-hidden shadow-xl">
               <Image
-                src={property.imageUrl}
+                src={property.imageUrl || `https://picsum.photos/seed/${property.id}/1200/800`}
                 alt={property.title}
                 fill
                 className="object-cover"
@@ -100,17 +118,19 @@ export default function PropertyDetailPage() {
                 </p>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-2xl font-headline font-bold text-primary">Key Amenities</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {(property.amenities || []).map((amenity, idx) => (
-                    <div key={idx} className="flex items-center gap-3 bg-white p-4 rounded-xl border">
-                      <CheckCircle2 className="w-5 h-5 text-secondary" />
-                      <span className="font-medium">{amenity}</span>
-                    </div>
-                  ))}
+              {property.amenities && property.amenities.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-headline font-bold text-primary">Key Amenities</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {property.amenities.map((amenity: string, idx: number) => (
+                      <div key={idx} className="flex items-center gap-3 bg-white p-4 rounded-xl border">
+                        <CheckCircle2 className="w-5 h-5 text-secondary" />
+                        <span className="font-medium">{amenity}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 

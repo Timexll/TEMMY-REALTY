@@ -1,13 +1,27 @@
 
+"use client";
+
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, CheckCircle, Award, Users, Search } from 'lucide-react';
+import { ArrowRight, CheckCircle, Award, Users, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PROPERTIES } from '@/app/lib/mock-data';
 import { PropertyCard } from '@/components/PropertyCard';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, limit } from 'firebase/firestore';
 
 export default function Home() {
-  const featuredProperties = PROPERTIES.filter(p => p.featured).slice(0, 3);
+  const db = useFirestore();
+  
+  const featuredQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(
+      collection(db, 'property_listings'),
+      where('featured', '==', true),
+      limit(3)
+    );
+  }, [db]);
+
+  const { data: featuredProperties, isLoading } = useCollection(featuredQuery);
 
   return (
     <div className="flex flex-col gap-20 pb-20">
@@ -118,11 +132,23 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {featuredProperties.map(property => (
-              <PropertyCard key={property.id} property={property} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {featuredProperties && featuredProperties.length > 0 ? (
+                featuredProperties.map(property => (
+                  <PropertyCard key={property.id} property={property as any} />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-20 bg-muted/20 rounded-3xl">
+                  <p className="text-muted-foreground font-medium">New featured listings coming soon.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

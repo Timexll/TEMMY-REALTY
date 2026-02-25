@@ -1,35 +1,44 @@
 
 "use client";
 
-import { useState } from 'react';
-import { PROPERTIES } from '@/app/lib/mock-data';
+import { useMemo, useState } from 'react';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertySearch } from '@/components/PropertySearch';
-import { Search, Building2 } from 'lucide-react';
+import { Search, Building2, Loader2 } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
 export default function SearchPage() {
-  const [listings, setListings] = useState(PROPERTIES);
+  const db = useFirestore();
+  const [filters, setFilters] = useState({ query: '', category: 'all', priceRange: 'all' });
 
-  const handleSearch = (filters: { query: string; category: string; priceRange: string }) => {
-    let filtered = PROPERTIES;
-    
+  const allPropsRef = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'property_listings');
+  }, [db]);
+
+  const { data: properties, isLoading } = useCollection(allPropsRef);
+
+  const filteredListings = useMemo(() => {
+    if (!properties) return [];
+    let list = [...properties];
+
     if (filters.query) {
       const q = filters.query.toLowerCase();
-      filtered = filtered.filter(p => 
-        p.title.toLowerCase().includes(q) || 
-        p.location.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q)
+      list = list.filter(p => 
+        (p.title || '').toLowerCase().includes(q) || 
+        (p.location || '').toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q)
       );
     }
     
     if (filters.category !== 'all') {
-      filtered = filtered.filter(p => p.category === filters.category);
+      list = list.filter(p => p.category === filters.category);
     }
 
     if (filters.priceRange !== 'all') {
-      filtered = filtered.filter(p => {
-        // Simple numeric parsing for both buy and rent formats
-        const numericPrice = parseInt(p.price.replace(/[^0-9]/g, ''));
+      list = list.filter(p => {
+        const numericPrice = parseInt((p.price || '').replace(/[^0-9]/g, ''));
         
         if (p.type === 'Buy') {
           if (filters.priceRange === '0-500k') return numericPrice < 500000;
@@ -45,8 +54,8 @@ export default function SearchPage() {
       });
     }
 
-    setListings(filtered);
-  };
+    return list;
+  }, [properties, filters]);
 
   return (
     <div className="pb-20">
@@ -62,17 +71,23 @@ export default function SearchPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <PropertySearch onSearch={handleSearch} />
+        <PropertySearch onSearch={setFilters} />
 
         <div className="mt-20">
           <div className="flex items-center justify-between mb-8 border-b pb-4">
-            <h2 className="text-2xl font-bold text-primary">{listings.length} Results Found</h2>
+            <h2 className="text-2xl font-bold text-primary">
+              {isLoading ? 'Gathering Results...' : `${filteredListings.length} Results Found`}
+            </h2>
           </div>
 
-          {listings.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-24">
+              <Loader2 className="w-12 h-12 animate-spin text-primary" />
+            </div>
+          ) : filteredListings.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {listings.map(property => (
-                <PropertyCard key={property.id} property={property} />
+              {filteredListings.map(property => (
+                <PropertyCard key={property.id} property={property as any} />
               ))}
             </div>
           ) : (
