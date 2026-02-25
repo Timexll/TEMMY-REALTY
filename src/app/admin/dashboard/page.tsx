@@ -25,6 +25,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { generatePropertyDescription } from '@/ai/flows/ai-property-description-generation';
 import { Textarea } from '@/components/ui/textarea';

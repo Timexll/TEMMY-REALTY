@@ -1,8 +1,10 @@
+
 import { Property } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getPlaceholder = (id: string) => {
-  return PlaceHolderImages.find(img => img.id === id)?.imageUrl || `https://picsum.photos/seed/${id}/1200/800`;
+  const images = Array.isArray(PlaceHolderImages) ? PlaceHolderImages : [];
+  return images.find(img => img.id === id)?.imageUrl || `https://picsum.photos/seed/${id}/1200/800`;
 };
 
 export const PROPERTIES: Property[] = [
