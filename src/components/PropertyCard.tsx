@@ -11,12 +11,15 @@ interface PropertyCardProps {
 }
 
 export const PropertyCard = ({ property }: PropertyCardProps) => {
+  // Use the first image in the array if imageUrl is not explicitly set
+  const displayImage = property.imageUrl || (property.imageUrls && property.imageUrls[0]) || `https://picsum.photos/seed/${property.id}/600/400`;
+
   return (
     <Link href={`/property/${property.id}`}>
       <Card className="group overflow-hidden border-none shadow-md hover:shadow-xl transition-all duration-300 bg-white">
-        <div className="relative h-64 w-full overflow-hidden">
+        <div className="relative h-64 w-full overflow-hidden bg-muted">
           <Image
-            src={property.imageUrl}
+            src={displayImage}
             alt={property.title}
             fill
             className="object-cover group-hover:scale-110 transition-transform duration-500"

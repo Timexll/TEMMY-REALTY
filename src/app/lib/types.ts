@@ -14,6 +14,7 @@ export interface Property {
   description: string;
   amenities: string[];
   imageUrl: string;
+  imageUrls?: string[];
   featured?: boolean;
 }
 

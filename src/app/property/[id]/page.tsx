@@ -3,17 +3,20 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Bed, Bath, Move, MapPin, CheckCircle2, Phone, Mail, MessageCircle, Share2, Heart, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Bed, Bath, Move, MapPin, CheckCircle2, Phone, Mail, MessageCircle, Share2, Heart, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 export default function PropertyDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const db = useFirestore();
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   
   const propertyRef = useMemoFirebase(() => {
     if (!db || typeof id !== 'string') return null;
@@ -44,6 +47,10 @@ export default function PropertyDetailPage() {
     );
   }
 
+  const allImages = property.imageUrls && property.imageUrls.length > 0 
+    ? property.imageUrls 
+    : [property.imageUrl || `https://picsum.photos/seed/${property.id}/1200/800`];
+
   return (
     <div className="pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -54,24 +61,59 @@ export default function PropertyDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="relative h-[400px] md:h-[600px] w-full rounded-3xl overflow-hidden shadow-xl">
-              <Image
-                src={property.imageUrl || `https://picsum.photos/seed/${property.id}/1200/800`}
-                alt={property.title}
-                fill
-                className="object-cover"
-                data-ai-hint="property detail"
-              />
-              <div className="absolute top-6 left-6 flex gap-2">
-                <Badge variant={property.type === 'Buy' ? 'default' : 'secondary'} className="h-8 px-4 font-bold text-sm">
-                  {property.type === 'Buy' ? 'FOR SALE' : 'FOR RENT'}
-                </Badge>
-                {property.featured && (
-                  <Badge className="h-8 px-4 font-bold text-sm bg-cyan-500 text-white border-none">
-                    PREMIUM
+            <div className="space-y-4">
+              <div className="relative h-[400px] md:h-[600px] w-full rounded-3xl overflow-hidden shadow-xl bg-muted">
+                <Image
+                  src={allImages[activeImageIndex]}
+                  alt={property.title}
+                  fill
+                  className="object-cover transition-opacity duration-500"
+                  data-ai-hint="property detail"
+                  priority
+                />
+                <div className="absolute top-6 left-6 flex gap-2">
+                  <Badge variant={property.type === 'Buy' ? 'default' : 'secondary'} className="h-8 px-4 font-bold text-sm">
+                    {property.type === 'Buy' ? 'FOR SALE' : 'FOR RENT'}
                   </Badge>
+                  {property.featured && (
+                    <Badge className="h-8 px-4 font-bold text-sm bg-cyan-500 text-white border-none">
+                      PREMIUM
+                    </Badge>
+                  )}
+                </div>
+                
+                {allImages.length > 1 && (
+                  <>
+                    <button 
+                      onClick={() => setActiveImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white p-2 rounded-full transition-all"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button 
+                      onClick={() => setActiveImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white p-2 rounded-full transition-all"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                  </>
                 )}
               </div>
+
+              {/* Thumbnails */}
+              {allImages.length > 1 && (
+                <div className="flex gap-4 overflow-x-auto pb-2 px-1">
+                  {allImages.map((img, idx) => (
+                    <button 
+                      key={idx}
+                      onClick={() => setActiveImageIndex(idx)}
+                      className={`relative w-24 h-24 rounded-2xl overflow-hidden border-2 flex-shrink-0 transition-all ${activeImageIndex === idx ? 'border-primary ring-2 ring-primary/20 scale-105' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                    >
+                      <Image src={img} alt={`Thumbnail ${idx + 1}`} fill className="object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-6">
@@ -156,7 +198,7 @@ export default function PropertyDetailPage() {
 
                 <div className="border-t pt-6 space-y-4">
                   <div className="flex items-center gap-4">
-                    <div className="relative w-12 h-12 rounded-full overflow-hidden">
+                    <div className="relative w-12 h-12 rounded-full overflow-hidden border">
                       <Image
                         src="https://picsum.photos/seed/agent/100/100"
                         alt="Agent"
@@ -175,8 +217,8 @@ export default function PropertyDetailPage() {
                 </div>
                 
                 <div className="flex justify-center gap-4 pt-2">
-                  <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 border"><Heart className="w-5 h-5 text-red-500" /></Button>
-                  <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 border"><Share2 className="w-5 h-5" /></Button>
+                  <button className="rounded-full h-10 w-10 border flex items-center justify-center hover:bg-muted transition-colors"><Heart className="w-5 h-5 text-red-500" /></button>
+                  <button className="rounded-full h-10 w-10 border flex items-center justify-center hover:bg-muted transition-colors"><Share2 className="w-5 h-5" /></button>
                 </div>
               </CardContent>
             </Card>

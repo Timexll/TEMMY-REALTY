@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert, Key, Tag, ClipboardList, Camera, User as UserIcon, Save } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, LogOut, LayoutDashboard, Building2, DollarSign, MapPin, Maximize, Bed, Bath, Sparkles, Loader2, ShieldAlert, Key, Tag, ClipboardList, Camera, User as UserIcon, Save, X, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Property, PropertyType } from '@/app/lib/types';
@@ -24,7 +24,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from '@/hooks/use-toast';
 import { generatePropertyDescription } from '@/ai/flows/ai-property-description-generation';
@@ -42,6 +41,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const auth = useAuth();
   const db = useFirestore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isUserLoading } = useUser();
   
   const adminRef = useMemoFirebase(() => {
@@ -70,7 +70,6 @@ export default function AdminDashboardPage() {
   // Profile Edit State
   const [isProfileEditing, setIsProfileEditing] = useState(false);
   const [profileName, setProfileName] = useState('');
-  const [profileImage, setProfileImage] = useState('');
 
   useEffect(() => {
     if (adminData) {
@@ -120,13 +119,10 @@ export default function AdminDashboardPage() {
     if (!auth?.currentUser || !db) return;
     
     try {
-      // Update Firebase Auth Profile
       await updateProfile(auth.currentUser, {
         displayName: profileName,
-        photoURL: profileImage || auth.currentUser.photoURL
       });
 
-      // Update Firestore Admin Record
       const docRef = doc(db, 'admin_users', auth.currentUser.uid);
       updateDocumentNonBlocking(docRef, {
         fullName: profileName,
@@ -167,6 +163,49 @@ export default function AdminDashboardPage() {
         description: "The property has been successfully removed from the inventory.",
       });
     }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const currentImages = editingProperty?.imageUrls || [];
+    const remainingSlots = 4 - currentImages.length;
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+
+    if (filesToProcess.length === 0 && files.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Limit Reached",
+        description: "You can only upload up to 4 images.",
+      });
+      return;
+    }
+
+    filesToProcess.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setEditingProperty(prev => ({
+          ...prev,
+          imageUrls: [...(prev?.imageUrls || []), base64String],
+          imageUrl: prev?.imageUrl || base64String // Set as primary if first
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setEditingProperty(prev => {
+      const newUrls = [...(prev?.imageUrls || [])];
+      newUrls.splice(index, 1);
+      return {
+        ...prev,
+        imageUrls: newUrls,
+        imageUrl: newUrls[0] || '' // Update primary image to new first image
+      };
+    });
   };
 
   const handleAiGenerate = async () => {
@@ -224,6 +263,7 @@ export default function AdminDashboardPage() {
       adminId: user.uid,
       lastUpdatedDate: new Date().toISOString(),
       status: editingProperty.status || 'Available',
+      imageUrl: editingProperty.imageUrls?.[0] || editingProperty.imageUrl || `https://picsum.photos/seed/${Math.random()}/1200/800`,
     };
 
     if (editingProperty?.id) {
@@ -234,7 +274,6 @@ export default function AdminDashboardPage() {
       addDocumentNonBlocking(colRef, {
         ...payload,
         listingDate: new Date().toISOString(),
-        imageUrl: editingProperty.imageUrl || `https://picsum.photos/seed/${Math.random()}/1200/800`,
       });
     }
 
@@ -323,7 +362,7 @@ export default function AdminDashboardPage() {
       <div className="flex justify-end mb-8">
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingProperty({ type: activeTab === 'all' ? 'Buy' : activeTab, amenities: [], bedrooms: 1, bathrooms: 1 })} className="h-12 px-6 font-bold gap-2 shadow-xl shadow-primary/10">
+            <Button onClick={() => setEditingProperty({ type: activeTab === 'all' ? 'Buy' : activeTab, amenities: [], bedrooms: 1, bathrooms: 1, imageUrls: [] })} className="h-12 px-6 font-bold gap-2 shadow-xl shadow-primary/10">
               <Plus className="w-5 h-5" /> Create New Listing
             </Button>
           </DialogTrigger>
@@ -334,28 +373,54 @@ export default function AdminDashboardPage() {
               </DialogTitle>
             </DialogHeader>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 py-6">
-              {/* Image and Basic Info */}
+              {/* Image Manager */}
               <div className="lg:col-span-1 space-y-6">
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                    <Camera className="w-3 h-3" /> Property Image URL
+                    <Camera className="w-3 h-3" /> Property Gallery (Max 4)
                   </label>
-                  <Input 
-                    value={editingProperty?.imageUrl || ''} 
-                    onChange={e => setEditingProperty(prev => ({ ...prev, imageUrl: e.target.value }))}
-                    placeholder="https://images.unsplash.com/..." 
-                    className="h-11"
-                  />
-                  <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
-                    {editingProperty?.imageUrl ? (
-                      <Image src={editingProperty.imageUrl} alt="Preview" fill className="object-cover" />
-                    ) : (
-                      <div className="text-center p-4">
-                        <Camera className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                        <span className="text-xs text-muted-foreground">Image Preview</span>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {(editingProperty?.imageUrls || []).map((url, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group border bg-muted">
+                        <Image src={url} alt={`Preview ${idx + 1}`} fill className="object-cover" />
+                        <button 
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-1 right-1 bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        {idx === 0 && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-primary/80 text-white text-[10px] text-center py-0.5 font-bold">
+                            COVER
+                          </div>
+                        )}
                       </div>
+                    ))}
+                    
+                    {(editingProperty?.imageUrls || []).length < 4 && (
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                      >
+                        <ImagePlus className="w-6 h-6 text-muted-foreground/40" />
+                        <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">Add Photo</span>
+                      </button>
                     )}
                   </div>
+                  
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleImageUpload} 
+                    accept="image/*" 
+                    multiple 
+                    className="hidden" 
+                  />
+                  
+                  <p className="text-[10px] text-muted-foreground leading-tight px-1">
+                    Tip: The first image will be used as the main cover for the listing.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -510,7 +575,7 @@ export default function AdminDashboardPage() {
                 <TableRow key={property.id} className="hover:bg-muted/10 transition-colors">
                   <TableCell>
                     <div className="flex items-center gap-4">
-                      <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border shadow-sm">
+                      <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border shadow-sm bg-muted">
                         <Image 
                           src={property.imageUrl || `https://picsum.photos/seed/${property.id}/200/200`} 
                           alt={property.title} 
@@ -542,25 +607,21 @@ export default function AdminDashboardPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5"
+                      <button 
+                        className="h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
                         onClick={() => {
                           setEditingProperty(property);
                           setIsDialogOpen(true);
                         }}
                       >
                         <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+                      </button>
+                      <button 
+                        className="h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
                         onClick={() => handleDelete(property.id)}
                       >
                         <Trash2 className="w-4 h-4" />
-                      </Button>
+                      </button>
                     </div>
                   </TableCell>
                 </TableRow>
