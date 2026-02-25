@@ -1,15 +1,39 @@
-
 "use client";
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Home, LogIn, Menu, X, LayoutDashboard } from 'lucide-react';
+import { Home, LogIn, Menu, X, LayoutDashboard, User as UserIcon, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useUser } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useUser();
+  const auth = useAuth();
+  const db = useFirestore();
+
+  // Check if current user is admin
+  const adminRef = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return doc(db, 'admin_users', user.uid);
+  }, [db, user]);
+  
+  const { data: adminData } = useDoc(adminRef);
+
+  const handleLogout = () => {
+    if (auth) signOut(auth);
+  };
 
   const navLinks = [
     { name: 'Home', href: '/' },
@@ -42,22 +66,51 @@ export const Navbar = () => {
                 {link.name}
               </Link>
             ))}
+            
             <div className="h-6 w-px bg-border" />
-            <Link href={user ? "/admin/dashboard" : "/admin/login"}>
-              <Button variant="outline" size="sm" className="gap-2">
-                {user ? (
-                  <>
-                    <LayoutDashboard className="w-4 h-4" />
-                    Dashboard
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="w-4 h-4" />
-                    Admin
-                  </>
-                )}
-              </Button>
-            </Link>
+
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        <UserIcon className="w-5 h-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.displayName || user.email?.split('@')[0]}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {adminData && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/dashboard" className="cursor-pointer">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link href="/login">
+                <Button size="sm" className="gap-2 font-bold px-6">
+                  <LogIn className="w-4 h-4" />
+                  Sign In
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -86,21 +139,27 @@ export const Navbar = () => {
                 {link.name}
               </Link>
             ))}
-            <Link href={user ? "/admin/dashboard" : "/admin/login"} onClick={() => setIsOpen(false)}>
-              <div className="px-3 py-2 text-base font-medium text-primary flex items-center gap-2">
-                {user ? (
-                  <>
-                    <LayoutDashboard className="w-4 h-4" />
-                    Go to Dashboard
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="w-4 h-4" />
-                    Admin Login
-                  </>
+            
+            {user ? (
+              <>
+                {adminData && (
+                  <Link href="/admin/dashboard" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-base font-medium text-primary">
+                    Admin Dashboard
+                  </Link>
                 )}
-              </div>
-            </Link>
+                <button
+                  onClick={() => { handleLogout(); setIsOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-base font-medium text-destructive"
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <Link href="/login" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-base font-medium text-primary flex items-center gap-2">
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       )}

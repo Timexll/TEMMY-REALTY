@@ -42,6 +42,33 @@
         "registrationDate"
       ]
     },
+    "PublicUser": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PublicUser",
+      "type": "object",
+      "description": "Represents a regular customer (buyer or renter) on the platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique Firebase Auth UID of the user."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of account creation."
+        }
+      },
+      "required": ["id", "fullName", "email", "createdAt"]
+    },
     "PropertyListing": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PropertyListing",
@@ -54,15 +81,15 @@
         },
         "adminId": {
           "type": "string",
-          "description": "Reference to the AdminUser who created or last updated this property listing. (Relationship: AdminUser 1:N PropertyListing)"
+          "description": "Reference to the AdminUser who created or last updated this property listing."
         },
         "title": {
           "type": "string",
-          "description": "A concise title for the property listing, e.g., 'Modern American Villa in Miami'."
+          "description": "A concise title for the property listing."
         },
         "description": {
           "type": "string",
-          "description": "A detailed description of the property, highlighting its features and unique selling/renting points."
+          "description": "A detailed description of the property."
         },
         "listingType": {
           "type": "string",
@@ -70,7 +97,7 @@
         },
         "propertyType": {
           "type": "string",
-          "description": "The specific type of property, such as 'Luxury Family Home', 'Downtown Apartment', 'Luxury Condo', 'Studio Flat', 'Suburban House', 'Waterfront Property', or 'Newly Built Smart Home'."
+          "description": "The specific type of property."
         },
         "address": {
           "type": "string",
@@ -82,7 +109,7 @@
         },
         "state": {
           "type": "string",
-          "description": "The state where the property is located (e.g., 'CA', 'FL')."
+          "description": "The state where the property is located."
         },
         "zipCode": {
           "type": "string",
@@ -90,58 +117,58 @@
         },
         "price": {
           "type": "number",
-          "description": "The selling price of the property (for sale listings) or the monthly rental price (for rent listings)."
+          "description": "The selling price or monthly rental price."
         },
         "currency": {
           "type": "string",
-          "description": "The currency of the price (e.g., 'USD')."
+          "description": "The currency of the price."
         },
         "numBedrooms": {
           "type": "number",
-          "description": "The total number of bedrooms in the property."
+          "description": "Total number of bedrooms."
         },
         "numBathrooms": {
           "type": "number",
-          "description": "The total number of bathrooms in the property."
+          "description": "Total number of bathrooms."
         },
         "squareFootage": {
           "type": "number",
-          "description": "The total interior living area of the property in square feet."
+          "description": "Total interior living area in square feet."
         },
         "lotSize": {
           "type": "number",
-          "description": "The total area of the property's lot in square feet, applicable for houses with gardens or land."
+          "description": "Total area of the property's lot in square feet."
         },
         "yearBuilt": {
           "type": "number",
-          "description": "The year the property was originally constructed."
+          "description": "Year of construction."
         },
         "amenities": {
           "type": "array",
-          "description": "A list of amenities and key features available with the property (e.g., 'Parking Space', 'Garden', 'Modern Kitchen', 'Secure Neighborhood', '24/7 Support Assistance').",
+          "description": "List of amenities.",
           "items": {
             "type": "string"
           }
         },
         "imageUrls": {
           "type": "array",
-          "description": "An array of URLs pointing to high-quality images of the property.",
+          "description": "Array of URLs pointing to high-quality images.",
           "items": {
             "type": "string"
           }
         },
         "status": {
           "type": "string",
-          "description": "The current availability status of the property listing (e.g., 'Available', 'Under Contract', 'Sold', 'Rented', 'Pending')."
+          "description": "Availability status (e.g., 'Available', 'Sold')."
         },
         "listingDate": {
           "type": "string",
-          "description": "The date and time when the property was first listed.",
+          "description": "Timestamp of listing creation.",
           "format": "date-time"
         },
         "lastUpdatedDate": {
           "type": "string",
-          "description": "The date and time when the property listing was last updated.",
+          "description": "Timestamp of last update.",
           "format": "date-time"
         }
       },
@@ -184,11 +211,27 @@
           "schema": {
             "$ref": "#/backend/entities/AdminUser"
           },
-          "description": "Stores profile information for authorized administrators. The document ID (`adminId`) corresponds directly to the Firebase Authentication UID of the administrator. The existence of a document at this path signifies an active admin role. Includes fields for full name, email, role, and timestamps.",
+          "description": "Stores profile information for authorized administrators.",
           "params": [
             {
               "name": "adminId",
-              "description": "The unique Firebase Authentication User ID (UID) of the administrator."
+              "description": "The UID of the administrator."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "PublicUser",
+          "schema": {
+            "$ref": "#/backend/entities/PublicUser"
+          },
+          "description": "Stores profile information for regular users.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The UID of the user."
             }
           ]
         }
@@ -200,7 +243,7 @@
           "schema": {
             "$ref": "#/backend/entities/PropertyListing"
           },
-          "description": "Contains all property listings available for sale or rent. Each document includes the 'adminId' (the Firebase Auth UID of the managing administrator) denormalized into the document itself for authorization independence. This enables secure public read access for 'Available' listings and restricted write access to the owning administrator. All documents in this collection share the same security posture for public read and admin write operations.",
+          "description": "Contains all property listings available for sale or rent.",
           "params": [
             {
               "name": "propertyId",
@@ -209,7 +252,6 @@
           ]
         }
       }
-    ],
-    "reasoning": "The Firestore data structure for Temmy Realty Hub prioritizes security, scalability, and debuggability in line with the core design principles. It establishes two primary collections: 'admin_users' for managing administrative roles and 'property_listings' for all property data.\n\n**Authorization Independence:**\n1.  **Global Admin Role:** Instead of relying on custom claims or complex hierarchical lookups for administrative privileges, an administrator's status is determined by the *existence* of their user ID within the `/admin_users/{adminId}` collection. While checking for existence (`exists()`) is technically a database read, it's a common and accepted pattern for global role checks in security rules, explicitly permitted by the 'Global Roles (DBAC)' mandate. This avoids complex hierarchical `get()` calls that would break atomic operations.\n2.  **Property Ownership Denormalization:** Each `property_listing` document explicitly includes the `adminId` of the administrator who owns/manages that listing. This critical denormalization ensures that rules for creating, updating, or deleting a property listing can directly reference `resource.data.adminId` and compare it against `request.auth.uid`. This completely eliminates the need for `get()` calls to a parent document or related collection to determine ownership for authorization, enabling atomic write operations and simplifying rules significantly.\n\n**QAPs (Rules are not Filters):**\n1.  **Public Property Listings:** The `/property_listings` collection is designed to support secure public `list` operations. Security rules will ensure that unauthenticated users (or any user) can only read properties with a `status` of 'Available'. This prevents clients from inadvertently retrieving sensitive or unavailable listings, adhering to the QAP principle that rules enforce security, not merely filter data.\n2.  **Admin Property Management:** Administrators can query and list *all* properties they own, regardless of status, by filtering on their `adminId` in their client-side queries. The security rules will permit this `read` access for `property_listings` if `request.auth.uid` matches the `adminId` field within the document and the user is verified as an administrator via the `/admin_users` collection. This allows robust and secure listing capabilities for both public users and administrators without compromising data integrity or requiring client-side filtering for sensitive data."
+    ]
   }
 }

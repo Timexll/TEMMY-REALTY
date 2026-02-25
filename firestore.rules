@@ -2,92 +2,41 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * TEMMY REALTY HUB - SECURITY RULES PHILOSOPHY
-     * 
-     * Core Philosophy:
-     * This ruleset implements a robust administrative control model for a real estate platform.
-     * Access is bifurcated between public property browsing and secure administrative management.
-     * 
-     * Data Structure:
-     * - /admin_users/{adminId}: Root collection for administrative profiles, where the Document ID 
-     *   is the Firebase Auth UID.
-     * - /property_listings/{propertyId}: Root collection for all real estate listings.
-     * 
-     * Key Security Decisions:
-     * 1. Global Admin Role (DBAC): Administrative privileges are determined by the existence of a 
-     *    document in the 'admin_users' collection corresponding to the user's UID.
-     * 2. Property Ownership Denormalization: Every 'property_listing' document contains an 'adminId' 
-     *    field. This allows for immediate ownership verification without extra database lookups.
-     * 3. Public Read/Private Write: Property listings are publicly readable if marked as 'Available', 
-     *    but modifications are strictly limited to the specific administrator who owns the listing.
-     * 4. Structural Consistency: Rules enforce that administrators can only create or modify 
-     *    profiles and listings associated with their own verified UID.
-     */
-
     // --- Global Helper Functions ---
 
-    /** @description Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user's UID matches the provided ID. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Checks if the document exists and the current user is the owner. */
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    /** @description Checks if the authenticated user has an entry in the admin_users collection. */
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admin_users/$(request.auth.uid));
     }
 
-    /** @description Verifies ownership of a property listing based on the 'adminId' field. */
-    function isPropertyOwner(data) {
-      return isSignedIn() && data.adminId == request.auth.uid;
-    }
-
-    // --- Collection Rules ---
-
-    /**
-     * @description Rules for administrative user profiles. Allows self-registration and profile management.
-     * @path /admin_users/{adminId}
-     * @allow (create) User 'user_123' creates a document at /admin_users/user_123.
-     * @deny (create) User 'user_123' attempts to create a document for 'user_456'.
-     * @principle Ownership-based write access and path consistency validation.
-     */
+    // --- Admin Users ---
     match /admin_users/{adminId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      
-      // Prototyping Mode: We validate path consistency (relational integrity) but not the full schema.
-      allow create: if isOwner(adminId) && request.resource.data.id == adminId;
-      allow update: if isExistingOwner(adminId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(adminId);
+      allow create: if isOwner(adminId);
+      allow update: if isOwner(adminId);
+      allow delete: if false; // Admins usually don't delete themselves
     }
 
-    /**
-     * @description Rules for property listings. Publicly readable if 'Available', writeable only by the owner.
-     * @path /property_listings/{propertyId}
-     * @allow (get) Any user reads a listing where status is 'Available'.
-     * @allow (update) Admin 'user_123' updates a listing where listing.adminId == 'user_123'.
-     * @deny (update) Admin 'user_123' attempts to update a listing owned by 'user_456'.
-     * @principle Public Read with Owner-Only Writes via denormalized ownership field.
-     */
-    match /property_listings/{propertyId} {
-      // Public can see available listings; Admins can see their own listings regardless of status.
-      allow get: if (resource.data.status == 'Available') || isPropertyOwner(resource.data);
-      allow list: if (resource.data.status == 'Available') || isPropertyOwner(resource.data);
+    // --- Public Users ---
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow list: if isAdmin(); // Only admins can list all users
+    }
 
-      // Writes require the user to be a registered Admin and the owner of the specific listing.
-      allow create: if isAdmin() && isPropertyOwner(request.resource.data);
-      allow update: if resource != null && isAdmin() && isPropertyOwner(resource.data) && (request.resource.data.adminId == resource.data.adminId);
-      allow delete: if resource != null && isAdmin() && isPropertyOwner(resource.data);
+    // --- Property Listings ---
+    match /property_listings/{propertyId} {
+      allow get, list: if true; // Public listings are viewable by anyone
+      allow write: if isAdmin(); // Only admins can create/update/delete listings
     }
   }
 }
