@@ -5,7 +5,8 @@ import { PlaceHolderImages } from './placeholder-images';
 const getPlaceholder = (id: string) => {
   // Ensure we always have an array to call find on
   const images = Array.isArray(PlaceHolderImages) ? PlaceHolderImages : [];
-  return images.find(img => img.id === id)?.imageUrl || `https://picsum.photos/seed/${id}/1200/800`;
+  const found = images.find(img => img.id === id);
+  return found?.imageUrl || `https://picsum.photos/seed/${id}/1200/800`;
 };
 
 export const PROPERTIES: Property[] = [

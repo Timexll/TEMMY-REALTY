@@ -19,6 +19,9 @@ export interface Property {
 
 export interface AdminUser {
   id: string;
-  name: string;
-  email: string;
+  fullName: string;
+  email: string | null;
+  role: string;
+  registrationDate: string;
+  lastLoginDate: string;
 }
