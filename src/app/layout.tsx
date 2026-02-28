@@ -7,9 +7,13 @@ import { FirebaseClientProvider } from '@/firebase';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'Temmy Realty Hub | Buy & Rent Homes in the US',
-  description: 'Temmy American Realty specializes in luxury family homes and quality rental apartments across the United States.',
-};
+  title: "Temmy Realty Hub | Buy & Rent Homes in the US",
+  description:
+    "Temmy American Realty specializes in luxury family homes and quality rental apartments across the United States.",
+  verification: {
+    google: "w-YA9b4lNfzBaaZjJEEjHe7sJhcWazAd5A1Loc_o7xw",
+  },
+
 
 export default function RootLayout({
   children,
@@ -33,6 +37,4 @@ export default function RootLayout({
           <Toaster />
         </FirebaseClientProvider>
       </body>
-    </html>
-
-<meta name="google-site-verification" content="w-YA9b4lNfzBaaZjJEEjHe7sJhcWazAd5A1Loc_o7xw" />
+    </http 
