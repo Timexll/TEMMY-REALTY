@@ -35,4 +35,10 @@ export default function RootLayout({
       </body>
     </html>
   );
-}
+}export const metadata = {
+  title: "Temmy Realty",
+  description: "Buy and rent houses",
+  verification: {
+    google: "w-YA9b4lNfzBaaZjJEEjHe7sJhcWazAd5A1Loc_o7xw",
+  },
+};
