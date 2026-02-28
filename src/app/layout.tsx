@@ -34,11 +34,5 @@ export default function RootLayout({
         </FirebaseClientProvider>
       </body>
     </html>
-  );
-}export const metadata = {
-  title: "Temmy Realty",
-  description: "Buy and rent houses",
-  verification: {
-    google: "w-YA9b4lNfzBaaZjJEEjHe7sJhcWazAd5A1Loc_o7xw",
-  },
-};
+
+<meta name="google-site-verification" content="w-YA9b4lNfzBaaZjJEEjHe7sJhcWazAd5A1Loc_o7xw" />
